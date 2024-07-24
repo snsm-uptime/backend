@@ -110,7 +110,3 @@ def get_transactions_from_bank(
             emails = service.fetch_paginated_bac_email(
                 mailbox, date_range.start_date, date_range.end_date, cursor)
     return JSONResponse(status_code=emails.meta.status, content=jsonable_encoder(emails))
-
-
-if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", reload=True, port=8080)
