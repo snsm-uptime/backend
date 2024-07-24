@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "backend"
+version = "0.1.0"
+description = "Data layer for Uptime API"
+authors = ["Sebastian Soto M"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pydantic-settings = "^2.3.4"
+pydantic = "^2.8.2"
+email-validator = "^2.2.0"
+bs4 = "^0.0.2"
+fastapi = "^0.111.1"
+requests = "^2.32.3"
+python-dateutil = "^2.9.0.post0"
+
+
+[tool.poetry.group.dev.dependencies]
+autopep8 = "^2.3.1"
+rope = "^1.13.0"
+debugpy = "^1.8.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
