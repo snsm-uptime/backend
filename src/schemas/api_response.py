@@ -1,12 +1,13 @@
 import base64
 import json
+from datetime import datetime
 from typing import Generic, List, Optional, TypeVar
 
 from pydantic import BaseModel, Field, model_validator
 
 from ..config import config
 
-D = TypeVar('D', bound=BaseModel)
+T = TypeVar('T')
 
 
 class PaginationMeta(BaseModel):
@@ -24,18 +25,18 @@ class Meta(BaseModel):
     request_time: float = 0.0
 
 
-class PaginatedResponse(BaseModel, Generic[D]):
+class PaginatedResponse(BaseModel, Generic[T]):
     pagination: Optional[PaginationMeta] = None
-    items: Optional[List[D]] = None
+    items: Optional[List[T]] = None
 
 
-class SingleResponse(BaseModel, Generic[D]):
-    item: Optional[D] = None
+class SingleResponse(BaseModel, Generic[T]):
+    item: Optional[T] = None
 
 
-class ApiResponse(BaseModel, Generic[D]):
+class ApiResponse(BaseModel, Generic[T]):
     meta: Meta
-    data: Optional[D] = None
+    data: Optional[T] = None
 
 
 class CursorModel(BaseModel):
@@ -117,3 +118,10 @@ class CursorModel(BaseModel):
             )
         except (base64.binascii.Error, json.JSONDecodeError) as e:
             raise ValueError("Invalid cursor format") from e
+
+
+class DateRange(BaseModel):
+    start_date: datetime = Field(...,
+                                 description="Start date in ISO format (YYYY-MM-DD)")
+    end_date: datetime = Field(...,
+                               description="End date in ISO format (YYYY-MM-DD)")
