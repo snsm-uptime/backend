@@ -1,22 +1,12 @@
 import base64
 import json
-from datetime import datetime
-from enum import Enum
 from typing import Generic, List, Optional, TypeVar
 
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import BaseModel, Field, model_validator
 
-from .config import config
+from ..config import config
 
-T = TypeVar('T')
 D = TypeVar('D', bound=BaseModel)
-
-
-class DateRange(BaseModel):
-    start_date: datetime = Field(...,
-                                 description="Start date in ISO format (YYYY-MM-DD)")
-    end_date: datetime = Field(...,
-                               description="End date in ISO format (YYYY-MM-DD)")
 
 
 class PaginationMeta(BaseModel):
@@ -34,26 +24,18 @@ class Meta(BaseModel):
     request_time: float = 0.0
 
 
-class PaginatedResponse(BaseModel, Generic[T]):
+class PaginatedResponse(BaseModel, Generic[D]):
     pagination: Optional[PaginationMeta] = None
-    items: Optional[List[T]] = None
+    items: Optional[List[D]] = None
 
 
-class SingleResponse(BaseModel, Generic[T]):
-    item: Optional[T] = None
+class SingleResponse(BaseModel, Generic[D]):
+    item: Optional[D] = None
 
 
-class ApiResponse(BaseModel, Generic[T]):
+class ApiResponse(BaseModel, Generic[D]):
     meta: Meta
-    data: Optional[T] = None
-
-
-class EmailMessageModel(BaseModel):
-    subject: Optional[str]
-    from_email: Optional[str]
-    to_emails: List[EmailStr] = []
-    date: Optional[datetime]
-    body: Optional[str]
+    data: Optional[D] = None
 
 
 class CursorModel(BaseModel):
@@ -135,13 +117,3 @@ class CursorModel(BaseModel):
             )
         except (base64.binascii.Error, json.JSONDecodeError) as e:
             raise ValueError("Invalid cursor format") from e
-
-
-class PydanticValidationError(BaseModel):
-    field: Optional[str] = None
-    message: Optional[str] = None
-    error: Optional[str] = None
-    input: Optional[str] = None
-
-    def __str__(self):
-        return f"[{self.field}={self.input}] {self.message}"

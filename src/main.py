@@ -1,12 +1,11 @@
 from http import HTTPStatus
 from logging import getLogger
 from typing import Literal, Optional
-from fastapi import Depends, FastAPI, HTTPException, Path, Query, Request
+from fastapi import Depends, FastAPI, Path, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 import requests
-import uvicorn
 
 from .models import ApiResponse, CursorModel, DateRange, Meta, PaginatedResponse, EmailMessageModel, PydanticValidationError
 
@@ -51,7 +50,7 @@ class EmailReaderService:
             response = requests.get(
                 f"{email_api_url}/{mailbox}", params=params)
             response.raise_for_status()
-            return ApiResponse(**response.json())
+            return ApiResponse[PaginatedResponse[EmailMessageModel]](**response.json())
         except requests.RequestException as e:
             meta = Meta(status=HTTPStatus.INTERNAL_SERVER_ERROR,
                         message='. '.join(e.args))
@@ -60,11 +59,12 @@ class EmailReaderService:
 
     def get_paginated_promerica_transactions(self, mailbox: str, start_date: str, end_date: str,
                                              cursor: CursorModel) -> ApiResponse[PaginatedResponse[EmailMessageModel]]:
-        emails = self.fetch_paginated_promerica_email(
+        email_response = self.fetch_paginated_promerica_email(
             mailbox, start_date, end_date, cursor)
-        for email in emails:
+        for email in email_response.data.items:
             # TODO: Transform email to Transaction using the corresponding parser
             ...
+        return email_response
 
 
 @app.exception_handler(RequestValidationError)
