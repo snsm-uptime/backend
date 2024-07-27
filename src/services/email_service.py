@@ -17,7 +17,6 @@ class EmailReaderService:
         self.email_api_url = "http://email-reader:80"
         self.logger = getLogger(__class__.__name__)
 
-    @timed_operation
     def fetch_paginated_bac_email(self, mailbox: str, start_date: str, end_date: str, cursor: CursorModel) -> ApiResponse[PaginatedResponse[EmailMessageModel]]:
         params = {
             "start_date": start_date,

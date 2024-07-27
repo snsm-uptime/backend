@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from http import HTTPStatus
 from typing import List, Literal, override
 
@@ -58,6 +59,10 @@ class TransactionService(GenericService[TransactionTable, TransactionCreate, Tra
         # TODO: Implement threading to paginate everything
         request_time = promerica_response.meta.request_time + bac_response.meta.request_time
         transactions: List[Transaction] = []
+
+        with ThreadPoolExecutor(max_workers=config.EMAIL_PROCESSING_THREADS) as executor:
+            futures = []
+            future = execu
 
         # Craft response based on process
         return ApiResponse(

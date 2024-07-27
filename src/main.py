@@ -1,8 +1,11 @@
 from http import HTTPStatus
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
+from requests import RequestException
+
 from .routers.transactions import router as TransactionRouter
+from .utils.response import create_exception_response
 
 from .models import PydanticValidationError
 
@@ -12,7 +15,7 @@ app = FastAPI()
 @app.exception_handler(RequestValidationError)
 async def custom_request_validation_exception_handler(request: Request, exc: RequestValidationError):
     errors = exc.errors()
-    custom_errors = [
+    custom_errors = ', '.join([
         str(PydanticValidationError(
             field=".".join(map(str, error.get("loc"))),
             message=error.get("msg"),
@@ -20,13 +23,15 @@ async def custom_request_validation_exception_handler(request: Request, exc: Req
             input=error.get('input')
         ))
         for error in errors
-    ]
-    meta = Meta(
-        status=HTTPStatus.UNPROCESSABLE_ENTITY,
-        message='.\n'.join(custom_errors),
-        request_time=0.0
+    ])
+    return create_exception_response(HTTPStatus.UNPROCESSABLE_ENTITY, ValueError(custom_errors))
+
+
+@app.exception_handler(RequestException)
+async def requests_exception_handler(request: Request, exc: RequestException):
+    msg = jsonable_encoder(request.json())
+    return create_exception_response(
+        HTTPStatus.INTERNAL_SERVER_ERROR,
+        ValueError(msg)
     )
-
-    return JSONResponse(status_code=meta.status, content={"meta": meta.model_dump()})
-
-app.include_router(TransactionRouter)
+app.include_router(TransactionRouter, prefix='/v1')
