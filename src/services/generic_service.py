@@ -4,15 +4,13 @@ from typing import Callable, Generic, List, Optional, Type
 
 from sqlalchemy.orm import Session
 
-from email_transaction_extractor.repositories.generic_repository import \
+from ..repositories.generic_repository import \
     GenericRepository
-from email_transaction_extractor.schemas.api_response import (
+from ..schemas.api_response import (
     ApiResponse, Meta, PaginatedResponse, PaginationMeta, SingleResponse)
-from email_transaction_extractor.typing import (CreateSchemaType, ModelType,
-                                                ReturnSchemaType,
-                                                UpdateSchemaType)
-from email_transaction_extractor.utils.pagination import (decode_cursor,
-                                                          encode_cursor)
+from ..schemas.typing import (CreateSchemaType, ModelType,
+                              ReturnSchemaType,
+                              UpdateSchemaType)
 
 
 class GenericService(Generic[ModelType, CreateSchemaType, UpdateSchemaType, ReturnSchemaType]):
@@ -44,6 +42,7 @@ class GenericService(Generic[ModelType, CreateSchemaType, UpdateSchemaType, Retu
         return ApiResponse(meta=Meta(status=HTTPStatus.OK, request_time=elapsed_time), data=data)
 
     def get_paginated(self, page_size: int, cursor: Optional[str] = None, filter: Optional[Callable[[ModelType], bool]] = None) -> ApiResponse[PaginatedResponse[ReturnSchemaType]]:
+        # TODO: use Cursor Model
         if cursor:
             cursor_data = decode_cursor(cursor)
             if cursor_data is None:

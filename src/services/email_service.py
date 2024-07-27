@@ -1,32 +1,44 @@
-import copy
-from email.message import Message
-from typing import List, Optional
 
-from email_transaction_extractor.email import EmailClient, IMAPSearchCriteria
-from email_transaction_extractor.models.enums import Bank
-from email_transaction_extractor.utils.dates import DateRange
+from http import HTTPStatus
+from logging import getLogger
+
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
+import requests
+from sqlalchemy import Tuple
+
+from ..utils.decorators import timed_operation
+
+from ..schemas import EmailMessageModel, Meta, ApiResponse, CursorModel, PaginatedResponse
 
 
-class EmailService:
-    def __init__(self, client: EmailClient, default_criteria: Optional[IMAPSearchCriteria] = None):
-        self.client = client
-        self.__default_criteria = default_criteria or IMAPSearchCriteria()
+class EmailReaderService:
+    def __init__(self):
+        self.email_api_url = "http://email-reader:80"
+        self.logger = getLogger(__class__.__name__)
 
-    @property
-    def default_criteria(self) -> IMAPSearchCriteria:
-        return self.__default_criteria
+    @timed_operation
+    def fetch_paginated_bac_email(self, mailbox: str, start_date: str, end_date: str, cursor: CursorModel) -> ApiResponse[PaginatedResponse[EmailMessageModel]]:
+        params = {
+            "start_date": start_date,
+            "end_date": end_date,
+            "senders": "notificacion@notificacionesbaccr.com",
+            **cursor.model_dump()
+        }
+        response = requests.get(
+            f"{self.email_api_url}/{mailbox}", params=params)
+        response.raise_for_status()
+        return ApiResponse(**response.json())
 
-    @default_criteria.setter
-    def default_criteria(self, criteria: IMAPSearchCriteria) -> None:
-        self.__default_criteria = criteria
-
-    def get_mail_from_bank(self, bank: Bank, subject_filter: Optional[str] = None) -> List[Message]:
-        criteria = copy.deepcopy(self.__default_criteria).from_(bank.email)
-        if subject_filter:
-            criteria = criteria.subject(subject_filter)
-        final_criteria = IMAPSearchCriteria().and_(criteria.build())
-        ids = self.client.fetch_email_ids(final_criteria)
-        if ids is None:
-            return []
-        emails = self.client.get_emails(ids)
-        return emails
+    def fetch_paginated_promerica_email(self, mailbox: str, start_date: str, end_date: str, cursor: CursorModel) -> ApiResponse[PaginatedResponse[EmailMessageModel]]:
+        params = {
+            "start_date": start_date,
+            "end_date": end_date,
+            "senders": "info@promerica.fi.cr",
+            "subject": "Comprobante",
+            **cursor.model_dump()
+        }
+        response = requests.get(
+            f"{self.email_api_url}/{mailbox}", params=params)
+        response.raise_for_status()
+        return ApiResponse[PaginatedResponse[EmailMessageModel]](**response.json())

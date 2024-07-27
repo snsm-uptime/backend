@@ -8,7 +8,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
-from ..models import ApiResponse, Meta
+from ..schemas import ApiResponse, Meta
 
 logger = logging.getLogger(__name__)
 
