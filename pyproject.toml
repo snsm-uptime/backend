@@ -15,12 +15,16 @@ fastapi = "^0.111.1"
 requests = "^2.32.3"
 python-dateutil = "^2.9.0.post0"
 sqlalchemy = "^2.0.31"
+apscheduler = "^3.10.4"
+psycopg2-binary = "^2.9.9"
 
 
 [tool.poetry.group.dev.dependencies]
 autopep8 = "^2.3.1"
 rope = "^1.13.0"
 debugpy = "^1.8.2"
+pytest = "^8.3.2"
+pytest-cov = "^5.0.0"
 
 [build-system]
 requires = ["poetry-core"]

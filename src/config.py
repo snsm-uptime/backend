@@ -12,9 +12,12 @@ class Settings(BaseSettings):
         env_file_encoding='utf-8',
         extra="ignore"
     )
-    PAGE_SIZE: int = 15
+    DATABASE_URL: str
+    EMAIL_PROCESSING_THREADS: int
     CACHE_CAPACITY_TRANSACTION_LIST: int = 5
     ENVIRONMENT: Literal['local', 'dev', 'prod'] = 'local'
+    MAILBOX: str = 'inbox'
+    PAGE_SIZE: int = 15
 
 
 config = Settings()
