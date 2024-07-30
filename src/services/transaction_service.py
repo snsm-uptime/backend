@@ -1,35 +1,54 @@
 from concurrent.futures import ThreadPoolExecutor
 from http import HTTPStatus
-from typing import List, Literal, override
+from logging import getLogger
+from typing import List, Optional, override
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from ..utils.pagination import PaginationDetails, ThreadedPaginator
+
 from ..config import config
-from ..models import (Bank, TransactionIDExistsError, TransactionTable,
-                      generate_transaction_id)
-from ..parsers import BacMessageParser, PromericaMessageParser
+from ..models import TransactionIDExistsError, TransactionTable, generate_transaction_id
 from ..repositories.transaction_repository import TransactionRepository
-from ..schemas import (ApiResponse, CursorModel, DateRange, EmailMessageModel,
-                       Meta, PaginatedResponse, PaginationMeta, SingleResponse,
-                       Transaction, TransactionCreate, TransactionUpdate)
+from ..schemas import (
+    ApiResponse,
+    CursorModel,
+    DateRange,
+    Meta,
+    SingleResponse,
+    Transaction,
+    TransactionCreate,
+    TransactionUpdate,
+)
 from .email_service import EmailReaderService
 from .generic_service import GenericService
 
 
-class TransactionService(GenericService[TransactionTable, TransactionCreate, TransactionUpdate, Transaction]):
+class TransactionService(
+    GenericService[TransactionTable, TransactionCreate,
+                   TransactionUpdate, Transaction]
+):
     def __init__(self, db: Session, email_service: EmailReaderService):
         self.repository: TransactionRepository = TransactionRepository(db)
         self.email_service = email_service
-        super().__init__(TransactionTable,
-                         TransactionCreate, TransactionUpdate, Transaction, self.repository)
+        super().__init__(
+            TransactionTable,
+            TransactionCreate,
+            TransactionUpdate,
+            Transaction,
+            self.repository,
+        )
 
     @override
-    def create(self, obj_in: TransactionCreate) -> ApiResponse[SingleResponse[Transaction]]:
+    def create(
+        self, obj_in: TransactionCreate
+    ) -> ApiResponse[SingleResponse[Transaction]]:
         transaction_id = generate_transaction_id(
-            obj_in.bank_email, obj_in.value, obj_in.date)
+            obj_in.bank_email, obj_in.value, obj_in.date
+        )
         obj_in_data = obj_in.model_dump()
-        obj_in_data['id'] = transaction_id
+        obj_in_data["id"] = transaction_id
         db_obj = self.repository.model(**obj_in_data)
         try:
             db_obj, elapsed_time = self.repository.create(db_obj)
@@ -40,9 +59,12 @@ class TransactionService(GenericService[TransactionTable, TransactionCreate, Tra
         transaction = self.return_schema.model_validate(db_obj)
 
         return ApiResponse(
-            meta=Meta(status=HTTPStatus.CREATED, request_time=elapsed_time,
-                      message=f'Transaction created successfully'),
-            data=SingleResponse(item=transaction)
+            meta=Meta(
+                status=HTTPStatus.CREATED,
+                request_time=elapsed_time,
+                message=f"Transaction created successfully {transaction.id}",
+            ),
+            data=SingleResponse(item=transaction),
         )
 
     def pull_transactions_from_email(
@@ -52,25 +74,32 @@ class TransactionService(GenericService[TransactionTable, TransactionCreate, Tra
     ) -> ApiResponse:
         # TODO: paginate through all pages in order to create the transactions
         promerica_response = self.email_service.fetch_paginated_promerica_email(
-            config.MAILBOX, date_range.start_date, date_range.end_date, cursor)
+            config.MAILBOX, date_range.start_date, date_range.end_date, cursor
+        )
         # TODO: paginate through all pages in order to create the transactions
         bac_response = self.email_service.fetch_paginated_bac_email(
-            config.MAILBOX, date_range.start_date, date_range.end_date, cursor)
+            config.MAILBOX, date_range.start_date, date_range.end_date, cursor
+        )
         # TODO: Implement threading to paginate everything
-        request_time = promerica_response.meta.request_time + bac_response.meta.request_time
+        request_time = (
+            promerica_response.meta.request_time + bac_response.meta.request_time
+        )
         transactions: List[Transaction] = []
 
-        with ThreadPoolExecutor(max_workers=config.EMAIL_PROCESSING_THREADS) as executor:
-            futures = []
-            future = execu
+        def iterate_promerica(cursor: Optional[str]) -> ApiResponse:
+            pass
+
+        paginator = ThreadedPaginator(
+            getLogger('PromericaThreadPool'), pagination_details=PaginationDetails())
 
         # Craft response based on process
         return ApiResponse(
             meta=Meta(
                 status=HTTPStatus.CREATED,
-                message=f'Found {len(transactions)} in your Email\'s {
-                    config.MAILBOX} from {date_range}',
-                request_time=request_time),
+                message=f"Found {len(transactions)} in your Email's {
+                    config.MAILBOX} from {date_range}",
+                request_time=request_time,
+            ),
         )
 
     # def __fetch_from_email_by_date(self, client: EmailClient, date_range: DateRange) -> List[TransactionCreate]:

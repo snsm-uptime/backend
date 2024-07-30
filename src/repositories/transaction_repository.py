@@ -1,8 +1,6 @@
-from requests import Session
-
+from sqlalchemy.orm import Session
 from ..models.transaction import TransactionTable
 from ..repositories.generic_repository import GenericRepository
-from ..schemas import DateRange
 
 
 class TransactionRepository(GenericRepository[TransactionTable]):
