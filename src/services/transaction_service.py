@@ -90,7 +90,11 @@ class TransactionService(
             pass
 
         paginator = ThreadedPaginator(
-            getLogger('PromericaThreadPool'), pagination_details=PaginationDetails())
+            getLogger('PromericaThreadPool'),
+            pagination_details=PaginationDetails(),
+            config.EMAIL_PROCESSING_THREADS,
+            iterate_promerica
+        )
 
         # Craft response based on process
         return ApiResponse(

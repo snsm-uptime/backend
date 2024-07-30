@@ -29,6 +29,7 @@ def pull_transactions_from_email(
     cursor = CursorModel(page=page, page_size=page_size, cursor=cursor_str)
     try:
         result = transaction_service.pull_transactions_from_email(cursor, date_range)
+
     except RequestException as e:
         return create_exception_response(HTTPStatus.INTERNAL_SERVER_ERROR, e)
     return create_json_response(result)

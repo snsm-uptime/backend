@@ -6,7 +6,7 @@ from typing import Awaitable, Callable, Generic, List, Optional, TypeVar
 
 from pydantic import BaseModel
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class PaginationDetails(BaseModel):
@@ -16,62 +16,74 @@ class PaginationDetails(BaseModel):
 
 
 class Paginator(ABC, Generic[T]):
-    def __init__(self, logger: logging.Logger, pagination_details: PaginationDetails, process_function: Callable[[int], Awaitable[List[T]]]):
-        self.total_items = min(pagination_details.max_items,
-                               pagination_details.total_items) if pagination_details.max_items is not None else pagination_details.total_items
+    def __init__(
+        self,
+        logger: logging.Logger,
+        pagination_details: PaginationDetails,
+        process_function: Callable[[str], Awaitable[List[T]]],
+    ):
+        self.total_items = pagination_details.total_items
         self.page_size = pagination_details.page_size
         self.process_function = process_function
         self.__logger = logger
         self.results: List[Optional[T]] = []
-        logger.info(
-            f'TOTAL_ITEMS is {self.total_items}, MAX_ITEMS is {pagination_details.max_items}')
+        logger.info(f"TOTAL_ITEMS is {self.total_items}")
 
     @property
     def logger(self) -> logging.Logger:
         return self.__logger
 
     @abstractmethod
-    def paginate(self):
+    def paginate(self) -> List[T]:
         raise NotImplementedError
 
     def __call__(self) -> List[T]:
-        self.paginate()
-        return list(chain.from_iterable(self.results))
+        data = self.paginate()
+        return list(chain.from_iterable(data))
+        return []
 
 
 class ThreadedPaginator(Paginator[T]):
-    def __init__(self, logger: logging.Logger, pagination_details: PaginationDetails, thread_count: int, process_function: Callable[[int], List[T]]):
+    def __init__(
+        self,
+        logger: logging.Logger,
+        pagination_details: PaginationDetails,
+        thread_count: int,
+        process_function: Callable[[str], List[T]],
+    ):
         super().__init__(logger, pagination_details, process_function)
         self.thread_count = max(1, thread_count)
-        self.results = [
-            None] * ((self.total_items + self.page_size - 1) // self.page_size)
+        self.results = [None] * (
+            (self.total_items + self.page_size - 1) // self.page_size
+        )
 
     def paginate(self) -> List[T]:
         total_pages = (self.total_items + self.page_size - 1) // self.page_size
         self.logger.info(
-            f'[THREAD PAGINATOR] Total Documents, Pages: {self.total_items}, {total_pages}')
+            f"[THREAD PAGINATOR] Total Documents, Pages: {self.total_items}, {total_pages}"
+        )
 
         if self.thread_count == 1:
-            self.logger.info(
-                '[THREAD PAGINATOR] Running in single thread mode.')
+            self.logger.info("[THREAD PAGINATOR] Running in single thread mode.")
             for page in range(1, total_pages + 1):
                 self._worker(page, page)
         else:
             self.logger.info(
-                f'[THREAD PAGINATOR] Running in multi-thread mode. ({self.thread_count} threads)')
+                f"[THREAD PAGINATOR] Running in multi-thread mode. ({self.thread_count} threads)"
+            )
             pages_per_thread = (
-                total_pages + self.thread_count - 1) // self.thread_count
+                total_pages + self.thread_count - 1
+            ) // self.thread_count
             with ThreadPoolExecutor(max_workers=self.thread_count) as executor:
                 for i in range(self.thread_count):
                     start_page = i * pages_per_thread + 1
-                    end_page = min(
-                        start_page + pages_per_thread - 1, total_pages)
+                    end_page = min(start_page + pages_per_thread - 1, total_pages)
                     executor.submit(self._worker, start_page, end_page)
 
         return self.results
 
     def log_label(self, suffix: str) -> str:
-        return f'[THREADED PAGINATOR:{suffix}]' if suffix else '[THREADED PAGINATOR]'
+        return f"[THREADED PAGINATOR:{suffix}]" if suffix else "[THREADED PAGINATOR]"
 
     def _worker(self, start_page: int, end_page: int):
         for page in range(start_page, end_page + 1):
@@ -79,8 +91,9 @@ class ThreadedPaginator(Paginator[T]):
             result = self.process_function(skip_count)
             if result is None:
                 self.logger.error(
-                    f"{self.log_label(self.process_function.__name__)} Processed page {page} with skip count {skip_count} and got None.")
+                    f"{self.log_label(self.process_function.__name__)} Processed page {page} with skip count {skip_count} and got None."
+                )
             else:
                 self.results[page - 1] = result
-            message = self.log_label(f'PAGE={page}:CURSOR={skip_count}')
+            message = self.log_label(f"PAGE={page}:CURSOR={skip_count}")
             self.logger.debug(message)
