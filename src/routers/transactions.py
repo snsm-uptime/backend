@@ -23,15 +23,13 @@ def pull_transactions_from_email(
         None, description="Cursor for pagination", alias="cursor"
     ),
     page: Optional[int] = Query(None, description="Current page"),
-    page_size: Optional[int] = Query(None, description="Number of items per page"),
+    page_size: Optional[int] = Query(
+        None, description="Number of items per page"),
     transaction_service: TransactionService = Depends(get_transaction_service),
 ):
     cursor = CursorModel(page=page, page_size=page_size, cursor=cursor_str)
-    try:
-        result = transaction_service.pull_transactions_from_email(cursor, date_range)
-
-    except RequestException as e:
-        return create_exception_response(HTTPStatus.INTERNAL_SERVER_ERROR, e)
+    result = transaction_service.pull_transactions_from_email(
+        cursor, date_range)
     return create_json_response(result)
 
 

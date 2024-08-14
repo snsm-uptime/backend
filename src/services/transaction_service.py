@@ -1,26 +1,25 @@
-from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from email.utils import parseaddr
+from functools import partial
 from http import HTTPStatus
 from logging import getLogger
-from typing import List, Optional, override
+from typing import Callable, List, Optional, Tuple, override
 
+from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ..utils.pagination import PaginationDetails, ThreadedPaginator
+from ..types import EmailFetcher
 
 from ..config import config
-from ..models import TransactionIDExistsError, TransactionTable, generate_transaction_id
+from ..models import (TransactionIDExistsError, TransactionTable,
+                      generate_transaction_id, Bank)
+from ..parsers import BacMessageParser, BaseMessageParser, PromericaMessageParser
 from ..repositories.transaction_repository import TransactionRepository
-from ..schemas import (
-    ApiResponse,
-    CursorModel,
-    DateRange,
-    Meta,
-    SingleResponse,
-    Transaction,
-    TransactionCreate,
-    TransactionUpdate,
-)
+from ..schemas import (ApiResponse, CursorModel, PaginationMeta, DateRange, EmailMessageModel,
+                       Meta, PaginatedResponse, SingleResponse, Transaction,
+                       TransactionCreate, TransactionUpdate)
+from ..utils.pagination import PaginationDetails, ThreadedPaginator
 from .email_service import EmailReaderService
 from .generic_service import GenericService
 
@@ -67,44 +66,102 @@ class TransactionService(
             data=SingleResponse(item=transaction),
         )
 
+    def _transform_paginated_api_response(self, response: ApiResponse[PaginatedResponse[EmailMessageModel]]) -> List[TransactionCreate]:
+        transactions: List[TransactionCreate] = []
+        for m in response.data.items:
+            parser: BaseMessageParser
+            bank_name: str = ''
+            bank_email = parseaddr(m.from_email)[1]
+            match bank_email:
+                case Bank.BAC.email:
+                    parser = BacMessageParser(m)
+                    bank_name = Bank.BAC.name
+                case Bank.PROMERICA.email:
+                    parser = PromericaMessageParser(m)
+                    bank_name = Bank.PROMERICA.name
+                    # ignore these types of emails
+                    # TODO: implement pago de tarjeta de credito parser
+                    if 'Pago de Tarjeta de Credito' in m.subject:
+                        self.logger.warning(
+                            f'Ignored email because it was a card payment')
+                        continue
+                case _:
+                    raise ValueError(f'Parser not found for {m.from_email}')
+
+            value, currency = parser.parse_value_and_currency()
+            try:
+                transaction = TransactionCreate(
+                    bank_email=bank_email,
+                    bank_name=bank_name,
+                    business=parser.parse_business(),
+                    business_type=parser.parse_business_type(),
+                    currency=currency,
+                    date=m.date,
+                    value=value,
+                    body=m.body,
+                    expense_priority=None,
+                    expense_type=None
+                )
+                transactions.append(transaction)
+            except ValidationError as ve:
+                self.logger.exception(ve)
+        return transactions
+
     def pull_transactions_from_email(
         self,
         cursor: CursorModel,
         date_range: DateRange,
     ) -> ApiResponse:
-        # TODO: paginate through all pages in order to create the transactions
-        promerica_response = self.email_service.fetch_paginated_promerica_email(
-            config.MAILBOX, date_range.start_date, date_range.end_date, cursor
-        )
-        # TODO: paginate through all pages in order to create the transactions
-        bac_response = self.email_service.fetch_paginated_bac_email(
-            config.MAILBOX, date_range.start_date, date_range.end_date, cursor
-        )
-        # TODO: Implement threading to paginate everything
-        request_time = (
-            promerica_response.meta.request_time + bac_response.meta.request_time
-        )
-        transactions: List[Transaction] = []
 
-        def iterate_promerica(cursor: Optional[str]) -> ApiResponse:
-            pass
+        fetch_promerica = partial(
+            self.fetch_transactions_from_email, page_size=cursor.page_size,
+            fetch_function=self.email_service.fetch_paginated_promerica_email,
+            date_range=date_range)
+        fetch_bac = partial(
+            self.fetch_transactions_from_email, page_size=cursor.page_size,
+            fetch_function=self.email_service.fetch_paginated_bac_email,
+            date_range=date_range)
 
-        paginator = ThreadedPaginator(
-            getLogger('PromericaThreadPool'),
-            pagination_details=PaginationDetails(),
-            config.EMAIL_PROCESSING_THREADS,
-            iterate_promerica
-        )
+        all_transactions: List[Tuple[PaginationMeta,
+                                     List[TransactionCreate]]] = []
+        total_time: float = 0.0
+
+        if bac_transactions := fetch_bac(page=cursor.page):
+            bac_paginator = ThreadedPaginator[Tuple[PaginationMeta, List[TransactionCreate]]](
+                getLogger('BacThreadPool'),
+                PaginationDetails(
+                    page_size=bac_transactions[0].page_size,
+                    total_items=bac_transactions[0].total_items
+                ),
+                config.EMAIL_PROCESSING_THREADS,
+                fetch_bac
+            )
+            bac_transactions, bac_execution_time = bac_paginator()
+            total_time += bac_execution_time
+            all_transactions.append(bac_transactions)
+
+        if promerica_transactions := fetch_promerica(page=cursor.page):
+            promerica_paginator = ThreadedPaginator[Tuple[PaginationMeta, List[TransactionCreate]]](
+                getLogger('PromericaThreadPool'),
+                PaginationDetails(
+                    page_size=promerica_transactions[0].page_size,
+                    total_items=promerica_transactions[0].total_items
+                ),
+                config.EMAIL_PROCESSING_THREADS,
+                fetch_promerica
+            )
+
+            promerica_transactions, promerica_execution_time = promerica_paginator()
+            total_time += promerica_execution_time
+            all_transactions.append(promerica_transactions)
 
         # Craft response based on process
-        return ApiResponse(
-            meta=Meta(
-                status=HTTPStatus.CREATED,
-                message=f"Found {len(transactions)} in your Email's {
-                    config.MAILBOX} from {date_range}",
-                request_time=request_time,
-            ),
-        )
+        return ApiResponse(meta=Meta(
+            status=HTTPStatus.OK,
+            message=(f"Found {len(all_transactions)} in your Email's"
+                     f"{config.MAILBOX} from {date_range}"),
+            request_time=total_time
+        ))
 
     # def __fetch_from_email_by_date(self, client: EmailClient, date_range: DateRange) -> List[TransactionCreate]:
     #     """

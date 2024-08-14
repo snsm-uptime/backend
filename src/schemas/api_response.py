@@ -125,3 +125,8 @@ class DateRange(BaseModel):
                                  description="Start date in ISO format (YYYY-MM-DD)")
     end_date: datetime = Field(...,
                                description="End date in ISO format (YYYY-MM-DD)")
+
+    def __str__(self) -> str:
+        psd = self.start_date.strftime("%B %d, %Y at %I:%M %p")
+        ped = self.end_date.strftime("%B %d, %Y at %I:%M %p")
+        return f'{psd} to {ped}'

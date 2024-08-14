@@ -29,9 +29,12 @@ class EmailReaderService:
             "senders": "notificacion@notificacionesbaccr.com",
             **cursor.model_dump(),
         }
-        response = requests.get(f"{self.email_api_url}/{mailbox}", params=params)
+        response = requests.get(
+            f"{self.email_api_url}/{mailbox}", params=params)
         response.raise_for_status()
-        return ApiResponse(**response.json())
+        result = ApiResponse[PaginatedResponse[EmailMessageModel]](
+            **response.json())
+        return result
 
     def fetch_paginated_promerica_email(
         self,
@@ -44,9 +47,12 @@ class EmailReaderService:
             "start_date": start_date,
             "end_date": end_date,
             "senders": "info@promerica.fi.cr",
-            "subject": "Comprobante",
+            "subject": "Comprobante de",
             **cursor.model_dump(),
         }
-        response = requests.get(f"{self.email_api_url}/{mailbox}", params=params)
+        response = requests.get(
+            f"{self.email_api_url}/{mailbox}", params=params)
         response.raise_for_status()
-        return ApiResponse[PaginatedResponse[EmailMessageModel]](**response.json())
+        result = ApiResponse[PaginatedResponse[EmailMessageModel]](
+            **response.json())
+        return result

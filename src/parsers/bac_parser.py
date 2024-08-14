@@ -20,7 +20,9 @@ class BacMessageParser(BaseMessageParser):
 
     def parse_value_and_currency(self) -> Tuple[float, str]:
         regex = re.compile(
-            r'Monto:\s*\r\n\s*(?P<currency>\w+)\s(?P<value>[\d,]+\.\d{2})')
+            r'Monto:\s*(?:\r?\n)?\s*(?P<currency>[A-Z]{3})\s*(?P<value>[\d,]*\.\d{2})'
+        )
+
         match = regex.search(self.body)
         if match:
             currency = match.group('currency').strip()
