@@ -1,7 +1,10 @@
-from pydantic import BaseModel, ConfigDict
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict
+
 from ..models.enums import ExpensePriority, ExpenseType
+from .api_response import PaginationMeta
 
 
 class TransactionBase(BaseModel):
@@ -32,3 +35,8 @@ class Transaction(TransactionBase):
     model_config = ConfigDict(
         from_attributes=True
     )
+
+
+class TransactionsPageResponse(BaseModel):
+    pagination_meta: PaginationMeta
+    transactions: List[TransactionCreate]

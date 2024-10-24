@@ -17,6 +17,7 @@ python-dateutil = "^2.9.0.post0"
 sqlalchemy = "^2.0.31"
 apscheduler = "^3.10.4"
 psycopg2-binary = "^2.9.9"
+pymemcache = "^4.0.0"
 
 
 [tool.poetry.group.dev.dependencies]

@@ -1,4 +1,5 @@
 import base64
+from hashlib import sha256
 import json
 from datetime import datetime
 from typing import Generic, List, Optional, TypeVar

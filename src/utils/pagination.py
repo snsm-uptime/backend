@@ -46,7 +46,10 @@ class Paginator(ABC, Generic[T]):
 
     def __call__(self) -> Tuple[List[T], float]:
         data, execution_time = self._paginate()
-        return list(chain.from_iterable(data)), execution_time
+        if isinstance(data[0], list):
+            return list(chain.from_iterable(data)), execution_time
+        else:
+            return data, execution_time
 
 
 class ThreadedPaginator(Paginator[T]):
