@@ -6,7 +6,7 @@ from typing import Generic, List, Optional, TypeVar
 
 from pydantic import BaseModel, Field, model_validator
 
-from ..config import config
+from ..config.app_settings import config
 
 T = TypeVar('T')
 

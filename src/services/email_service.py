@@ -1,7 +1,11 @@
-from datetime import datetime
 from logging import getLogger
 
 import requests
+
+from ..models.enums import Bank
+
+from ..schemas.api_response import DateRange
+from ..config import bank_config
 
 from ..schemas import (
     EmailMessageModel,
@@ -16,43 +20,31 @@ class EmailReaderService:
         self.email_api_url = "http://email-reader:80"
         self.logger = getLogger(__class__.__name__)
 
-    def fetch_paginated_bac_email(
+    def __fetch_paginated_email_from_bank(
         self,
         mailbox: str,
-        start_date: datetime,
-        end_date: datetime,
+        date_range: DateRange,
         cursor: CursorModel,
+        bank: Bank,
     ) -> ApiResponse[PaginatedResponse[EmailMessageModel]]:
-        params = {
-            "start_date": start_date,
-            "end_date": end_date,
-            "senders": "notificacion@notificacionesbaccr.com",
-            **cursor.model_dump(),
-        }
-        response = requests.get(
-            f"{self.email_api_url}/{mailbox}", params=params)
-        response.raise_for_status()
-        result = ApiResponse[PaginatedResponse[EmailMessageModel]](
-            **response.json())
-        return result
+        bank_params = bank_config[bank]
 
-    def fetch_paginated_promerica_email(
-        self,
-        mailbox: str,
-        start_date: datetime,
-        end_date: datetime,
-        cursor: CursorModel,
-    ) -> ApiResponse[PaginatedResponse[EmailMessageModel]]:
         params = {
-            "start_date": start_date,
-            "end_date": end_date,
-            "senders": "info@promerica.fi.cr",
-            "subject": "Comprobante de",
+            "start_date": date_range.start_date,
+            "end_date": date_range.end_date,
+            "senders": bank_params.senders,
             **cursor.model_dump(),
         }
+
+        if bank_params.subject:
+            params["subject"] = bank_params.subject
+
         response = requests.get(
             f"{self.email_api_url}/{mailbox}", params=params)
         response.raise_for_status()
-        result = ApiResponse[PaginatedResponse[EmailMessageModel]](
-            **response.json())
-        return result
+
+        return ApiResponse[PaginatedResponse[EmailMessageModel]](**response.json())
+
+    def fetch_emails_page_from_bank(self, bank: Bank, mailbox: str, date_range: DateRange, page: int, page_size: int) -> ApiResponse[PaginatedResponse[EmailMessageModel]]:
+        cursor = CursorModel(page=page, page_size=page_size)
+        return self.__fetch_paginated_email_from_bank(bank=bank, mailbox=mailbox, date_range=date_range, cursor=cursor)

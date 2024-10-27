@@ -1,11 +1,6 @@
 from abc import ABC, abstractmethod
-from datetime import datetime
-from email.message import Message
 from logging import getLogger
 from typing import Tuple
-
-from bs4 import BeautifulSoup
-from dateutil.parser import parse as parse_date
 
 from ..schemas.email import EmailMessageModel
 

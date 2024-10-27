@@ -6,7 +6,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from requests import RequestException
 
-from .config import config
+from .config.app_settings import config
 from .models import PydanticValidationError
 from .routers.transactions import router as TransactionRouter
 from .utils.logging import configure_root_logger
