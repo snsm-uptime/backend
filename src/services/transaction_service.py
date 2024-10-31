@@ -23,10 +23,11 @@ from .generic_service import GenericService
 def parse_email_to_transaction(m: EmailMessageModel, bank: Bank) -> TransactionCreate:
     parser = bank_config[bank].parser(m)
     value, currency = parser.parse_value_and_currency()
+    business = parser.parse_business()
     transaction = TransactionCreate(
         bank_email=bank.email,
         bank_name=bank.name,
-        business=parser.parse_business(),
+        business=business,
         business_type=parser.parse_business_type(),
         currency=currency,
         date=m.date,
@@ -43,7 +44,6 @@ class TransactionService(
                    TransactionUpdate, Transaction]
 ):
     def __init__(self, db: Session, email_service: EmailReaderService):
-        # self.bac_service: BankTransactionService = BankServiceFactory.get_from_bank(Bank.BAC, db, email_service) # This was DEPRECATED
         self.repository: TransactionRepository = TransactionRepository(db)
         self.email_service = email_service
 
@@ -136,7 +136,6 @@ class TransactionService(
                             email, bank)
                         try:
                             response = self.create(transaction)
-                            response_messages.append(response.meta.message)
                             if response.data:
                                 new_entries.append(response.data.item.id)
                         except TransactionIDExistsError as e:

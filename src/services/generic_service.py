@@ -2,14 +2,11 @@ from http import HTTPStatus
 from logging import getLogger
 from typing import Callable, Generic, List, Optional, Type
 
-from sqlalchemy.orm import Session
-
-from ..repositories.generic_repository import \
-    GenericRepository
-from ..schemas.api_response import (
-    ApiResponse, Meta, PaginatedResponse, PaginationMeta, SingleResponse)
-from ..schemas.typing import (CreateSchemaType, ModelType,
-                              ReturnSchemaType,
+from ..repositories.generic_repository import GenericRepository
+from ..schemas.api_response import (ApiResponse, CursorModel, Meta,
+                                    PaginatedResponse, PaginationMeta,
+                                    SingleResponse)
+from ..schemas.typing import (CreateSchemaType, ModelType, ReturnSchemaType,
                               UpdateSchemaType)
 
 
@@ -41,15 +38,9 @@ class GenericService(Generic[ModelType, CreateSchemaType, UpdateSchemaType, Retu
         data, elapsed_time = self.repository.get_all()
         return ApiResponse(meta=Meta(status=HTTPStatus.OK, request_time=elapsed_time), data=data)
 
-    def get_paginated(self, page_size: int, cursor: Optional[str] = None, filter: Optional[Callable[[ModelType], bool]] = None) -> ApiResponse[PaginatedResponse[ReturnSchemaType]]:
-        # TODO: use Cursor Model
-        if cursor:
-            cursor_data = decode_cursor(cursor)
-            if cursor_data is None:
-                raise ValueError("Invalid cursor")
-            current_page = cursor_data['page']
-        else:
-            current_page = 1
+    def get_paginated(self, cursor: CursorModel, filter: Optional[Callable[[ModelType], bool]] = None) -> ApiResponse[PaginatedResponse[ReturnSchemaType]]:
+        current_page = cursor.page
+        page_size = cursor.page_size
 
         total_items, count_elapsed_time = self.repository.count(filter)
         offset = (current_page - 1) * page_size
@@ -59,10 +50,10 @@ class GenericService(Generic[ModelType, CreateSchemaType, UpdateSchemaType, Retu
         total_pages = (total_items + page_size - 1) // page_size
         request_time = count_elapsed_time + paginated_elapsed_time
 
-        next_cursor = encode_cursor(
-            current_page + 1, page_size) if current_page < total_pages else None
-        prev_cursor = encode_cursor(
-            current_page - 1, page_size) if current_page > 1 else None
+        next_cursor = CursorModel(
+            page=current_page + 1, page_size=page_size).encode() if current_page < total_pages else None
+        prev_cursor = CursorModel(
+            page=current_page - 1, page_size=page_size).encode() if current_page > 1 else None
 
         items = [self.return_schema.model_validate(obj) for obj in db_objs]
 
@@ -72,7 +63,7 @@ class GenericService(Generic[ModelType, CreateSchemaType, UpdateSchemaType, Retu
             total_items=total_items,
             total_pages=total_pages,
             page_size=page_size,
-            current_page=current_page,
+            page=current_page,
             next_cursor=next_cursor,
             prev_cursor=prev_cursor
         )

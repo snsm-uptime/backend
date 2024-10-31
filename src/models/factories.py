@@ -81,7 +81,7 @@ class BankTransactionService:
         all_transactions = []
         for page_details in transactions_response:
             self.logger.debug(
-                f'Added data from page {page_details.pagination_meta.current_page}/{page_details.pagination_meta.total_pages}')
+                f'Added data from page {page_details.pagination_meta.page}/{page_details.pagination_meta.total_pages}')
             # move the set cache logic to the fetch function too.
             self.cache_service.set_transactions(page_details)
             all_transactions.extend(page_details.transactions)
@@ -133,7 +133,7 @@ class BacTransactionService(BankTransactionService):
             meta = PaginationMeta(
                 total_items=total_items,
                 page_size=page_size,
-                current_page=page,
+                page=page,
                 total_pages=(total_items + page_size - 1) // page_size,
             )
             cached_values = self.cache_service.get_transactions(meta)

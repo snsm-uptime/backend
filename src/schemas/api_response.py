@@ -15,7 +15,7 @@ class PaginationMeta(BaseModel):
     total_items: Optional[int] = None
     total_pages: Optional[int] = None
     page_size: Optional[int] = None
-    current_page: Optional[int] = None
+    page: Optional[int] = None
     next_cursor: Optional[str] = None
     prev_cursor: Optional[str] = None
 
@@ -82,7 +82,7 @@ class CursorModel(BaseModel):
         self.cursor = base64.urlsafe_b64encode(cursor_str.encode()).decode()
         return self.cursor
 
-    @ staticmethod
+    @staticmethod
     def encode_from_dict(page: int, page_size: int) -> str:
         """
         Encode given page and page_size into a base64 cursor string.
@@ -98,7 +98,7 @@ class CursorModel(BaseModel):
         cursor_str = json.dumps(cursor_data)
         return base64.urlsafe_b64encode(cursor_str.encode()).decode()
 
-    @ staticmethod
+    @staticmethod
     def decode(cursor: str) -> 'CursorModel':
         """
         Decode a base64 cursor string into a CursorModel instance.

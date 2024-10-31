@@ -9,7 +9,7 @@ from sqlalchemy import alias
 from ..database import SessionLocal, get_db
 from ..dependencies import get_transaction_service
 from ..schemas import ApiResponse, CursorModel, DateRange
-from ..schemas.api_response import SingleResponse
+from ..schemas.api_response import PaginatedResponse, SingleResponse
 from ..schemas.transaction import Transaction
 from ..services import TransactionService
 from ..utils import create_exception_response, create_json_response
@@ -25,21 +25,29 @@ def pull_transactions_from_email(
     cursor_str: Optional[str] = Query(
         None, description="Cursor for pagination", alias="cursor"
     ),
-    page: Optional[int] = Query(None, description="Current page"),
     page_size: Optional[int] = Query(
         None, description="Number of items per page"),
     transaction_service: TransactionService = Depends(get_transaction_service),
 ):
-    cursor = CursorModel(page=page, page_size=page_size, cursor=cursor_str)
+    cursor = CursorModel(page_size=page_size, cursor=cursor_str)
     result = transaction_service.pull_transactions_from_email(
         cursor, date_range)
     return create_json_response(result)
 
 
-# @router.get("/", response_model=ApiResponse[PaginatedResponse[Transaction]])
-# def get_all(cursor: Optional[str] = Query(None), page_size: int = Query(10), db: Session = Depends(get_db)):
-#     service = TransactionService(db)
-#     return service.get_paginated(cursor=cursor, page_size=page_size)
+@router.get("/", response_model=ApiResponse[PaginatedResponse[Transaction]])
+def get_all(
+    cursor_str: Optional[str] = Query(
+        None, description="Cursor for pagination", alias="cursor"
+    ),
+    page: Optional[int] = Query(None, description="Current page"),
+    page_size: Optional[int] = Query(
+        None, description="Number of items per page"),
+    transaction_service: TransactionService = Depends(get_transaction_service),
+
+):
+    cursor = CursorModel(page=page, page_size=page_size, cursor=cursor_str)
+    return transaction_service.get_paginated(cursor=cursor)
 
 
 # @router.get("/by-date", response_model=ApiResponse[PaginatedResponse[Transaction]])
@@ -53,24 +61,6 @@ def get_by_id(transaction_id: str, transaction_service: TransactionService = Dep
     resp = transaction_service.get(transaction_id)
     resp.meta.message = "Transaction retrieved successfully"
     return resp
-
-
-# @router.put("/{transaction_id}", response_model=Transaction)
-# def update(transaction_id: int, transaction_data: TransactionCreate, db: Session = Depends(get_db)):
-#     service = TransactionService(db)
-#     return service.update_transaction(transaction_id, transaction_data.dict())
-
-
-# @router.delete("/{transaction_id}", response_model=Transaction)
-# def delete(transaction_id: int, db: Session = Depends(get_db)):
-#     service = TransactionService(db)
-#     return service.delete_transaction(transaction_id)
-
-
-# @router.post("/", response_model=ApiResponse[SingleResponse[Transaction]])
-# def create(transaction: TransactionCreate, db: Session = Depends(get_db)):
-#     service = TransactionService(db)
-#     return service.create(transaction)
 
 
 # @router.post("/refresh", response_model=ApiResponse)
