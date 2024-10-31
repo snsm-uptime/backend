@@ -22,7 +22,7 @@ class TransactionTable(Base):
     date = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     value = Column(Float, nullable=False)
     currency = Column(String, nullable=False)
-    business = Column(String, nullable=True)
+    business = Column(String, nullable=False)
     business_type = Column(String, nullable=True)
     bank_name = Column(String, nullable=False)
     bank_email = Column(String, nullable=False)

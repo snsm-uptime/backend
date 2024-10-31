@@ -1,18 +1,15 @@
 import logging
-from http import HTTPStatus
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
-from requests import RequestException, Session
 from sqlalchemy import alias
 
-from ..database import SessionLocal, get_db
 from ..dependencies import get_transaction_service
 from ..schemas import ApiResponse, CursorModel, DateRange
 from ..schemas.api_response import PaginatedResponse, SingleResponse
 from ..schemas.transaction import Transaction
 from ..services import TransactionService
-from ..utils import create_exception_response, create_json_response
+from ..utils import create_json_response
 
 router = APIRouter(prefix="/transactions")
 

@@ -11,7 +11,8 @@ class BacMessageParser(BaseMessageParser):
 
     def parse_business(self) -> str | None:
         regex = re.compile(
-            r'Comercio:\s*\r\n(?P<business>.+?)\s*\n', re.DOTALL)
+            r'Comercio:\s*(?:\r\n|\n)?\s*(?P<business>.+?)\s*(?:\r\n|\n)', re.DOTALL
+        )
         match = regex.search(self.body)
         return match.group('business').strip() if match else None
 
