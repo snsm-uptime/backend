@@ -87,11 +87,11 @@ class TransactionService(
         cursor: CursorModel,
         date_range: DateRange,
     ) -> ApiResponse:
-        existing_entries: List = []
+        existing_entries = []
         paginators: List[Tuple[ThreadedPaginator, Bank]] = []
         response_messages: List[str] = []
         empty_responses = 0
-        transactions_created = 0
+        new_entries = []
         for bank in bank_config.keys():
             def fetch_func(page=cursor.page): return self.email_service.fetch_emails_page_from_bank(
                 bank=bank,
@@ -138,7 +138,7 @@ class TransactionService(
                             response = self.create(transaction)
                             response_messages.append(response.meta.message)
                             if response.data:
-                                transactions_created += 1
+                                new_entries.append(response.data.item.id)
                         except TransactionIDExistsError as e:
                             existing_entries.append(e.transaction_id)
                             response_messages.append(*e.args)
@@ -151,13 +151,10 @@ class TransactionService(
             ))
         return ApiResponse(meta=Meta(
             status=HTTPStatus.OK,
-            message=(
-                f'You just downloaded {transactions_created} new '
-                f'emails from {config.MAILBOX.upper()} > {
-                    ' - '.join([p[1].name for p in paginators])}. '
-                f'Dating from {date_range} to the database.'
-                f'({len(existing_entries)} already registered) ',
-                * response_messages
-            ),
+            message=response_messages,
             request_time=exec_time
-        ))
+        ), data={
+            'total_found': sum([p[0].total_items for p in paginators]),
+            'new_entries': new_entries,
+            'existing_entries': existing_entries
+        })

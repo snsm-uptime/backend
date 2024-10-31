@@ -3,13 +3,16 @@ from http import HTTPStatus
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
-from requests import RequestException
+from requests import RequestException, Session
 from sqlalchemy import alias
 
-from ..schemas import ApiResponse, CursorModel, DateRange
-from ..services import TransactionService
+from ..database import SessionLocal, get_db
 from ..dependencies import get_transaction_service
-from ..utils import create_json_response, create_exception_response
+from ..schemas import ApiResponse, CursorModel, DateRange
+from ..schemas.api_response import SingleResponse
+from ..schemas.transaction import Transaction
+from ..services import TransactionService
+from ..utils import create_exception_response, create_json_response
 
 router = APIRouter(prefix="/transactions")
 
@@ -45,12 +48,11 @@ def pull_transactions_from_email(
 #     return service.get_by_date(cursor=cursor, page_size=page_size, date_range=DateRange(**date_range.model_dump()))
 
 
-# @router.get("/{transaction_id}", response_model=ApiResponse[SingleResponse[Transaction]])
-# def get_by_id(transaction_id: str, db: Session = Depends(get_db)):
-#     service = TransactionService(db)
-#     resp = service.get(transaction_id)
-#     resp.meta.message = "Transaction retrieved successfully"
-#     return resp
+@router.get("/{transaction_id}", response_model=ApiResponse[SingleResponse[Transaction]])
+def get_by_id(transaction_id: str, transaction_service: TransactionService = Depends(get_transaction_service)):
+    resp = transaction_service.get(transaction_id)
+    resp.meta.message = "Transaction retrieved successfully"
+    return resp
 
 
 # @router.put("/{transaction_id}", response_model=Transaction)
