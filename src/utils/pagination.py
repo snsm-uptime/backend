@@ -59,12 +59,18 @@ class ThreadedPaginator(Paginator[T]):
         pagination_details: PaginationDetails,
         thread_count: int,
         process_function: Callable[[int], List[T]],
+        first_result: Optional[T] = None
     ):
         super().__init__(logger, pagination_details, process_function)
         self.thread_count = max(1, thread_count)
+        self.first_result = first_result
+        # Initialize results list with the correct length based on total pages
         self.results = [None] * (
             (self.total_items + self.page_size - 1) // self.page_size
         )
+
+        if self.first_result:
+            self.results[0] = self.first_result
 
     @timed_operation
     def _paginate(self) -> List[T]:
@@ -74,10 +80,14 @@ class ThreadedPaginator(Paginator[T]):
             f"Total Documents, Pages: {self.total_items}, {total_pages}"
         )
 
+        # Adjust the page range to skip the first page if already provided
+        # Start from page 2 if first result is available
+        start_page = 2 if self.first_result else 1
+
         if self.thread_count == 1:
             self.logger.info("pagination_mode"
-                             "Running in single thread mode.")
-            for page in range(1, total_pages + 1):
+                             "Running in single-thread mode.")
+            for page in range(start_page, total_pages + 1):
                 self._worker(page, page)
         else:
             self.logger.info("pagination_mode"
@@ -87,15 +97,21 @@ class ThreadedPaginator(Paginator[T]):
             ) // self.thread_count
             with ThreadPoolExecutor(max_workers=self.thread_count) as executor:
                 for i in range(self.thread_count):
-                    start_page = i * pages_per_thread + 1
-                    end_page = min(
-                        start_page + pages_per_thread - 1, total_pages)
-                    executor.submit(self._worker, start_page, end_page)
+                    # Calculate starting and ending pages, skipping the first page if already provided
+                    start_page_thread = max(
+                        i * pages_per_thread + 1, start_page)
+                    end_page_thread = min(
+                        start_page_thread + pages_per_thread - 1, total_pages)
+                    executor.submit(
+                        self._worker, start_page_thread, end_page_thread)
 
         return self.results
 
     def _worker(self, start_page: int, end_page: int):
         for page in range(start_page, end_page + 1):
+            if page == 1 and self.first_result is not None:
+                continue  # Skip the first page if first_result is already set
+
             result = self.process_function(page)
             if result is None:
                 self.logger.error(

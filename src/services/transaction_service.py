@@ -1,7 +1,8 @@
+from curses import meta
 from functools import partial
 from http import HTTPStatus
 from logging import getLogger
-from typing import List, override
+from typing import List, Tuple, override
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -20,7 +21,7 @@ from .generic_service import GenericService
 
 
 def parse_email_to_transaction(m: EmailMessageModel, bank: Bank) -> TransactionCreate:
-    parser = bank_config[bank].parser
+    parser = bank_config[bank].parser(m)
     value, currency = parser.parse_value_and_currency()
     transaction = TransactionCreate(
         bank_email=bank.email,
@@ -30,7 +31,7 @@ def parse_email_to_transaction(m: EmailMessageModel, bank: Bank) -> TransactionC
         currency=currency,
         date=m.date,
         value=value,
-        body=m.body,
+        body=m.body.strip().replace('\n', ''),
         expense_priority=None,
         expense_type=None
     )
@@ -86,34 +87,77 @@ class TransactionService(
         cursor: CursorModel,
         date_range: DateRange,
     ) -> ApiResponse:
-        paginators = []
+        existing_entries: List = []
+        paginators: List[Tuple[ThreadedPaginator, Bank]] = []
+        response_messages: List[str] = []
+        empty_responses = 0
+        transactions_created = 0
         for bank in bank_config.keys():
-            fetch_func = partial(self.email_service.fetch_emails_page_from_bank, bank=bank, mailbox=config.MAILBOX,
-                                 date_range=date_range, page_size=cursor.page_size)
+            def fetch_func(page=cursor.page): return self.email_service.fetch_emails_page_from_bank(
+                bank=bank,
+                mailbox=config.MAILBOX,
+                date_range=date_range,
+                page_size=cursor.page_size,
+                page=page
+            )
             emails: ApiResponse[PaginatedResponse[EmailMessageModel]] = fetch_func(
                 page=cursor.page)
-            if emails.meta.status == HTTPStatus.OK and emails.data:
-                pagination_metadata = emails.data.pagination
-                paginator = ThreadedPaginator[ApiResponse[PaginatedResponse[EmailMessageModel]]](
-                    logger=getLogger(bank.name.upper()+'_ThreadPool'),
-                    pagination_details=PaginationDetails(
-                        page_size=pagination_metadata.page_size,
-                        total_items=pagination_metadata.total_items
-                    ),
-                    process_function=fetch_func
-                )
-                paginators.append(paginator, bank)
+            response_messages.append(emails.meta.message)
+            match emails.meta.status:
+                case HTTPStatus.OK:
+                    if emails.data:
+                        pagination_metadata = emails.data.pagination
+                        paginator = ThreadedPaginator[ApiResponse[PaginatedResponse[EmailMessageModel]]](
+                            logger=getLogger(bank.name.upper()+'_ThreadPool'),
+                            pagination_details=PaginationDetails(
+                                page_size=pagination_metadata.page_size,
+                                total_items=pagination_metadata.total_items
+                            ),
+                            process_function=fetch_func,
+                            thread_count=config.EMAIL_PROCESSING_THREADS,
+                            first_result=emails
+                        )
+                        paginators.append((paginator, bank))
+                case HTTPStatus.PARTIAL_CONTENT:
+                    self.logger.warning(emails.meta.message)
+                    empty_responses += 1
 
-        transactions: List[TransactionCreate] = []
+        exec_time = 0.0
         for p, bank in paginators:
-            bank_emails = p()
-            transactions.extend(
-                [parse_email_to_transaction(be, bank) for be in bank_emails])
+            pagination_result = p()
+            bank_api_responses: List[ApiResponse[PaginatedResponse[EmailMessageModel]]
+                                     ] = pagination_result[0]
+            thread_pool_exec_time: float = pagination_result[1]
+            exec_time += thread_pool_exec_time
+            for api_response in bank_api_responses:
+                if api_response:
+                    for email in api_response.data.items:
+                        transaction = parse_email_to_transaction(
+                            email, bank)
+                        try:
+                            response = self.create(transaction)
+                            response_messages.append(response.meta.message)
+                            if response.data:
+                                transactions_created += 1
+                        except TransactionIDExistsError as e:
+                            existing_entries.append(e.transaction_id)
+                            response_messages.append(*e.args)
 
-        # Craft response based on process
-        # return ApiResponse(meta=Meta(
-        #     status=HTTPStatus.OK,
-        #     message=(f"Found {len(all_transactions)} in your Email's"
-        #              f"{config.MAILBOX} from {date_range}"),
-        #     request_time=total_time
-        # ))
+        if empty_responses == len(bank_config.keys()):
+            return ApiResponse(meta=Meta(
+                status=HTTPStatus.PARTIAL_CONTENT,
+                message=response_messages,
+                request_time=0.0
+            ))
+        return ApiResponse(meta=Meta(
+            status=HTTPStatus.OK,
+            message=(
+                f'You just downloaded {transactions_created} new '
+                f'emails from {config.MAILBOX.upper()} > {
+                    ' - '.join([p[1].name for p in paginators])}. '
+                f'Dating from {date_range} to the database.'
+                f'({len(existing_entries)} already registered) ',
+                * response_messages
+            ),
+            request_time=exec_time
+        ))

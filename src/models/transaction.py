@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, Enum, Float, String, Text
 
-from ..database import Base
+from ._base import Base
 from ..models.enums import ExpensePriority, ExpenseType
 
 

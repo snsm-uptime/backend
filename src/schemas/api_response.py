@@ -22,7 +22,7 @@ class PaginationMeta(BaseModel):
 
 class Meta(BaseModel):
     status: int
-    message: Optional[str] = None
+    message: Optional[str | List[str]] = None
     request_time: float = 0.0
 
 

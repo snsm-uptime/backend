@@ -17,7 +17,7 @@ from ..schemas import (
 
 class EmailReaderService:
     def __init__(self):
-        self.email_api_url = "http://email-reader:80"
+        self.email_api_url = "http://email-api:80"
         self.logger = getLogger(__class__.__name__)
 
     def __fetch_paginated_email_from_bank(
@@ -47,4 +47,6 @@ class EmailReaderService:
 
     def fetch_emails_page_from_bank(self, bank: Bank, mailbox: str, date_range: DateRange, page: int, page_size: int) -> ApiResponse[PaginatedResponse[EmailMessageModel]]:
         cursor = CursorModel(page=page, page_size=page_size)
-        return self.__fetch_paginated_email_from_bank(bank=bank, mailbox=mailbox, date_range=date_range, cursor=cursor)
+        data = self.__fetch_paginated_email_from_bank(
+            bank=bank, mailbox=mailbox, date_range=date_range, cursor=cursor)
+        return data
