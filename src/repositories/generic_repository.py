@@ -1,5 +1,7 @@
 from typing import Callable, Generic, List, Optional, Tuple, Type
 
+from fastapi import Query
+from sqlalchemy import ColumnElement, select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -60,15 +62,22 @@ class GenericRepository(Generic[ModelType]):
         return None
 
     @timed_operation
-    def get_paginated(self, offset: int, limit: int, filter: Optional[Callable[[ModelType], bool]] = None) -> Tuple[List[ModelType], float]:
-        query = self.db.query(self.model)
-        if filter is not None:
-            query = query.filter(filter)
-        return query.offset(offset).limit(limit).all()
+    def get_paginated(
+        self, offset: int, limit: int, where: Optional[ColumnElement] = None
+    ) -> Tuple[List[ModelType], float]:
+        query = select(self.model)
+        if where is not None:
+            query = query.where(where)
+        results = self.db.execute(
+            query
+            .offset(offset)
+            .limit(limit)
+        ).scalars().all()
+        return results
 
     @timed_operation
-    def count(self, filter: Optional[Callable[[ModelType], bool]] = None) -> Tuple[int, float]:
-        query = self.db.query(self.model)
-        if filter is not None:
-            query = query.filter(filter)
-        return query.count()
+    def count(self, where: Optional[ColumnElement] = None) -> Tuple[int, float]:
+        query = select(func.count()).select_from(self.model)
+        if where is not None:
+            query = query.where(where)
+        return self.db.execute(query).scalar_one()

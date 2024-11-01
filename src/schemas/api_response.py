@@ -5,6 +5,8 @@ from datetime import datetime
 from typing import Generic, List, Optional, TypeVar
 
 from pydantic import BaseModel, Field, model_validator
+from sqlalchemy import ColumnElement, and_
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from ..config.app_settings import config
 
@@ -122,12 +124,26 @@ class CursorModel(BaseModel):
 
 
 class DateRange(BaseModel):
-    start_date: datetime = Field(...,
-                                 description="Start date in ISO format (YYYY-MM-DD)")
-    end_date: datetime = Field(...,
-                               description="End date in ISO format (YYYY-MM-DD)")
+    start_date: Optional[datetime] = Field(
+        None, description="Start date in ISO format (YYYY-MM-DD)"
+    )
+    end_date: Optional[datetime] = Field(
+        None, description="End date in ISO format (YYYY-MM-DD)"
+    )
 
     def __str__(self) -> str:
-        psd = self.start_date.strftime("%B %d, %Y at %I:%M %p")
-        ped = self.end_date.strftime("%B %d, %Y at %I:%M %p")
-        return f'{psd} to {ped}'
+        psd = self.start_date.strftime(
+            "%B %d, %Y at %I:%M %p") if self.start_date else "N/A"
+        ped = self.end_date.strftime(
+            "%B %d, %Y at %I:%M %p") if self.end_date else "N/A"
+        return f"{psd} to {ped}"
+
+    def contains(self, date_attr) -> Optional[ColumnElement]:
+        """Return a SQLAlchemy expression to check if `date_attr` is within the range."""
+        if self.start_date and self.end_date:
+            return and_(self.start_date <= date_attr, date_attr <= self.end_date)
+        elif self.start_date:
+            return self.start_date <= date_attr
+        elif self.end_date:
+            return date_attr <= self.end_date
+        return None  # No filtering if both start and end dates are None

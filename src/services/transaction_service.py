@@ -2,8 +2,9 @@ from curses import meta
 from functools import partial
 from http import HTTPStatus
 from logging import getLogger
-from typing import List, Tuple, override
+from typing import List, Optional, Tuple, override
 
+from sqlalchemy import and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -157,3 +158,10 @@ class TransactionService(
             'new_entries': new_entries,
             'existing_entries': existing_entries
         })
+
+    def get_paginated_from_bank(self, cursor: CursorModel, bank: Bank, date_range: Optional[DateRange] = None) -> ApiResponse[PaginatedResponse[Transaction]]:
+        whereclause = TransactionTable.bank_name == bank.name
+        if date_range:
+            whereclause = and_(
+                whereclause, date_range.contains(TransactionTable.date))
+        return self.get_paginated(cursor, whereclause)

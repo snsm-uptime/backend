@@ -2,6 +2,8 @@ from http import HTTPStatus
 from logging import getLogger
 from typing import Callable, Generic, List, Optional, Type
 
+from sqlalchemy import ColumnElement
+
 from ..repositories.generic_repository import GenericRepository
 from ..schemas.api_response import (ApiResponse, CursorModel, Meta,
                                     PaginatedResponse, PaginationMeta,
@@ -38,7 +40,7 @@ class GenericService(Generic[ModelType, CreateSchemaType, UpdateSchemaType, Retu
         data, elapsed_time = self.repository.get_all()
         return ApiResponse(meta=Meta(status=HTTPStatus.OK, request_time=elapsed_time), data=data)
 
-    def get_paginated(self, cursor: CursorModel, filter: Optional[Callable[[ModelType], bool]] = None) -> ApiResponse[PaginatedResponse[ReturnSchemaType]]:
+    def get_paginated(self, cursor: CursorModel, filter: Optional[ColumnElement] = None) -> ApiResponse[PaginatedResponse[ReturnSchemaType]]:
         current_page = cursor.page
         page_size = cursor.page_size
 

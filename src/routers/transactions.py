@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import alias
 
 from ..dependencies import get_transaction_service
+from ..models.enums import Bank
 from ..schemas import ApiResponse, CursorModel, DateRange
 from ..schemas.api_response import PaginatedResponse, SingleResponse
 from ..schemas.transaction import Transaction
@@ -34,6 +35,7 @@ def pull_transactions_from_email(
 
 @router.get("/", response_model=ApiResponse[PaginatedResponse[Transaction]])
 def get_all(
+    date_range: DateRange = Depends(),
     cursor_str: Optional[str] = Query(
         None, description="Cursor for pagination", alias="cursor"
     ),
@@ -46,6 +48,41 @@ def get_all(
     cursor = CursorModel(page=page, page_size=page_size, cursor=cursor_str)
     return transaction_service.get_paginated(cursor=cursor)
 
+
+@router.get("/promerica", response_model=ApiResponse[PaginatedResponse[Transaction]])
+def get_all_promerica(
+    date_range: DateRange = Depends(),
+    cursor_str: Optional[str] = Query(
+        None, description="Cursor for pagination", alias="cursor"
+    ),
+    page: Optional[int] = Query(None, description="Current page"),
+    page_size: Optional[int] = Query(
+        None, description="Number of items per page"),
+    transaction_service: TransactionService = Depends(get_transaction_service),
+
+):
+    if (date_range.end_date is None) and (date_range.start_date is None):
+        date_range = None
+    cursor = CursorModel(page=page, page_size=page_size, cursor=cursor_str)
+    return transaction_service.get_paginated_from_bank(cursor=cursor, bank=Bank.PROMERICA, date_range=date_range)
+
+
+@router.get("/bac", response_model=ApiResponse[PaginatedResponse[Transaction]])
+def get_all_bac(
+    date_range: DateRange = Depends(),
+    cursor_str: Optional[str] = Query(
+        None, description="Cursor for pagination", alias="cursor"
+    ),
+    page: Optional[int] = Query(None, description="Current page"),
+    page_size: Optional[int] = Query(
+        None, description="Number of items per page"),
+    transaction_service: TransactionService = Depends(get_transaction_service),
+
+):
+    if (date_range.end_date is None) and (date_range.start_date is None):
+        date_range = None
+    cursor = CursorModel(page=page, page_size=page_size, cursor=cursor_str)
+    return transaction_service.get_paginated_from_bank(cursor=cursor, bank=Bank.BAC, date_range=date_range)
 
 # @router.get("/by-date", response_model=ApiResponse[PaginatedResponse[Transaction]])
 # def get_by_date(date_range: DateRange, cursor: Optional[str] = Query(None), page_size: int = Query(10), db: Session = Depends(get_db)):
