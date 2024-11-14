@@ -13,7 +13,7 @@ from .utils.logging import configure_root_logger
 from .utils.response import create_exception_response
 
 configure_root_logger(
-    log_level=logging.INFO if config.ENVIRONMENT == 'prod' else logging.DEBUG)
+    log_level=logging.INFO if config.ENVIRONMENT == 'production' else logging.DEBUG)
 
 app = FastAPI()
 

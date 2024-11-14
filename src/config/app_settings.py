@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     EMAIL_PROCESSING_THREADS: int
     CACHE_CAPACITY_TRANSACTION_LIST: int = 5
-    ENVIRONMENT: Literal['local', 'dev', 'prod'] = 'local'
+    ENVIRONMENT: Literal['local', 'development', 'production'] = 'local'
     MAILBOX: str = 'inbox'
     PAGE_SIZE: int = 15
 

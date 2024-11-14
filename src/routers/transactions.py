@@ -2,10 +2,10 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import alias
 
 from ..dependencies import get_transaction_service
 from ..models.enums import Bank
+from ..models.transaction import TransactionTable
 from ..schemas import ApiResponse, CursorModel, DateRange
 from ..schemas.api_response import PaginatedResponse, SingleResponse
 from ..schemas.transaction import Transaction
@@ -33,7 +33,7 @@ def pull_transactions_from_email(
     return create_json_response(result)
 
 
-@router.get("/", response_model=ApiResponse[PaginatedResponse[Transaction]])
+@router.get("", response_model=ApiResponse[PaginatedResponse[Transaction]])
 def get_all(
     date_range: DateRange = Depends(),
     cursor_str: Optional[str] = Query(
@@ -45,8 +45,9 @@ def get_all(
     transaction_service: TransactionService = Depends(get_transaction_service),
 
 ):
+    whereclause = date_range.contains(TransactionTable.date)
     cursor = CursorModel(page=page, page_size=page_size, cursor=cursor_str)
-    return transaction_service.get_paginated(cursor=cursor)
+    return transaction_service.get_paginated(cursor=cursor, filter=whereclause)
 
 
 @router.get("/promerica", response_model=ApiResponse[PaginatedResponse[Transaction]])
@@ -95,37 +96,3 @@ def get_by_id(transaction_id: str, transaction_service: TransactionService = Dep
     resp = transaction_service.get(transaction_id)
     resp.meta.message = "Transaction retrieved successfully"
     return resp
-
-
-# @router.post("/refresh", response_model=ApiResponse)
-# def refresh_transactions_by_date(range: DateRange, db: Session = Depends(get_db)):
-#     """
-#     Create transactions based on the start date provided in the request.
-
-#     Args:
-#         request: RefreshTransactionsRequest object containing the start date.
-#         db: Database session.
-
-#     Raises:
-#         HTTPException: If the start date is in the future.
-
-#     Returns:
-#         None
-#     """
-#     service = TransactionService(db)
-#     today = datetime.now()
-
-#     if range.start_date > today:
-#         return ApiResponse(meta=Meta(
-#             status=HTTPStatus.BAD_REQUEST,
-#             message="Start date cannot be in the future",
-#         ))
-
-#     if range.end_date > today:
-#         range.end_date = today
-
-#     date_range = DateRange(start_date=range.start_date,
-#                            end_date=range.end_date, days_ago=range.days_ago)
-
-#     # fetch and create the transactions based on emails from that date
-#     pass
