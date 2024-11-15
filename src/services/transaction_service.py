@@ -56,6 +56,14 @@ class TransactionService(
             self.repository,
         )
 
+    def get_expenses(self, date_range: DateRange) -> ApiResponse[SingleResponse[dict]]:
+        data, exec_time = self.repository.get_expenses(date_range)
+        return ApiResponse(
+            meta=Meta(status=HTTPStatus.OK,
+                      message="Got expenses in currency: USD, CRC", request_time=exec_time),
+            data=SingleResponse(item=data)
+        )
+
     @override
     def create(
         self, obj_in: TransactionCreate
