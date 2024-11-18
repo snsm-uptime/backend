@@ -11,11 +11,20 @@ from .models import PydanticValidationError
 from .routers.transactions import router as TransactionRouter
 from .utils.logging import configure_root_logger
 from .utils.response import create_exception_response
+from fastapi.middleware.cors import CORSMiddleware
 
 configure_root_logger(
     log_level=logging.INFO if config.ENVIRONMENT == 'production' else logging.DEBUG)
 
-app = FastAPI()
+app = FastAPI(redirect_slashes=False)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Use specific origins in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.exception_handler(RequestValidationError)

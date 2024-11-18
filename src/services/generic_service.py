@@ -1,6 +1,6 @@
 from http import HTTPStatus
 from logging import getLogger
-from typing import Callable, Generic, List, Optional, Type
+from typing import Callable, Generic, List, Optional, Type, Union
 
 from sqlalchemy import ColumnElement
 
@@ -40,14 +40,17 @@ class GenericService(Generic[ModelType, CreateSchemaType, UpdateSchemaType, Retu
         data, elapsed_time = self.repository.get_all()
         return ApiResponse(meta=Meta(status=HTTPStatus.OK, request_time=elapsed_time), data=data)
 
-    def get_paginated(self, cursor: CursorModel, filter: Optional[ColumnElement] = None) -> ApiResponse[PaginatedResponse[ReturnSchemaType]]:
+    def get_paginated(self, cursor: CursorModel, filter: Optional[ColumnElement] = None,
+                      order_by: Optional[Union[ColumnElement,
+                                               list[ColumnElement]]] = None
+                      ) -> ApiResponse[PaginatedResponse[ReturnSchemaType]]:
         current_page = cursor.page
         page_size = cursor.page_size
 
         total_items, count_elapsed_time = self.repository.count(filter)
         offset = (current_page - 1) * page_size
         db_objs, paginated_elapsed_time = self.repository.get_paginated(
-            offset, page_size, filter)
+            offset, page_size, filter, order_by)
 
         total_pages = (total_items + page_size - 1) // page_size
         request_time = count_elapsed_time + paginated_elapsed_time

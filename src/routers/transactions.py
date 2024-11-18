@@ -2,6 +2,7 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import func
 
 from ..dependencies import get_transaction_service
 from ..models.enums import Bank
@@ -103,4 +104,4 @@ def get_all(
 ):
     whereclause = date_range.contains(TransactionTable.date)
     cursor = CursorModel(page=page, page_size=page_size, cursor=cursor_str)
-    return transaction_service.get_paginated(cursor=cursor, filter=whereclause)
+    return transaction_service.get_paginated(cursor=cursor, filter=whereclause, order_by=[func.date(TransactionTable.date).desc(), TransactionTable.business, TransactionTable.value.desc()])

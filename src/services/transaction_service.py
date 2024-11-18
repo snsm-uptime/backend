@@ -172,4 +172,4 @@ class TransactionService(
         if date_range:
             whereclause = and_(
                 whereclause, date_range.contains(TransactionTable.date))
-        return self.get_paginated(cursor, whereclause)
+        return self.get_paginated(cursor, whereclause, order_by=TransactionTable.value)

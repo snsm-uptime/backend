@@ -1,4 +1,4 @@
-from typing import Callable, Generic, List, Optional, Tuple, Type
+from typing import Callable, Generic, List, Optional, Tuple, Type, Union
 
 from fastapi import Query
 from sqlalchemy import ColumnElement, select, func
@@ -63,11 +63,16 @@ class GenericRepository(Generic[ModelType]):
 
     @timed_operation
     def get_paginated(
-        self, offset: int, limit: int, where: Optional[ColumnElement] = None
+        self, offset: int, limit: int, where: Optional[ColumnElement] = None,
+        order_by: Optional[Union[ColumnElement, list[ColumnElement]]] = None
     ) -> Tuple[List[ModelType], float]:
         query = select(self.model)
+
+        if order_by is not None:
+            query = query.order_by(*order_by)
         if where is not None:
             query = query.where(where)
+
         results = self.db.execute(
             query
             .offset(offset)
@@ -79,5 +84,5 @@ class GenericRepository(Generic[ModelType]):
     def count(self, where: Optional[ColumnElement] = None) -> Tuple[int, float]:
         query = select(func.count()).select_from(self.model)
         if where is not None:
-            query = query.where(where)
+            query = query.where(where).order_by()
         return self.db.execute(query).scalar_one()
