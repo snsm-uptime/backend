@@ -76,7 +76,6 @@ class TransactionService(
         db_obj = self.repository.model(**obj_in_data)
         try:
             db_obj, elapsed_time = self.repository.create(db_obj)
-            # TODO: Add bank and bank_email to the transaction model to avoid type missmatch error
         except IntegrityError:
             raise TransactionIDExistsError(transaction_id)
 
