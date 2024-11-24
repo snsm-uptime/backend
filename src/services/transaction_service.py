@@ -60,7 +60,7 @@ class TransactionService(
         data, exec_time = self.repository.get_expenses(date_range)
         return ApiResponse(
             meta=Meta(status=HTTPStatus.OK,
-                      message="Got expenses in currency: USD, CRC", request_time=exec_time),
+                      message=f"Got expenses from {date_range} in currency: USD, CRC", request_time=exec_time),
             data=SingleResponse(item=data)
         )
 
