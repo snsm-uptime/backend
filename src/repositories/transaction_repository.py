@@ -18,12 +18,12 @@ class TransactionRepository(GenericRepository[TransactionTable]):
         self._db_env = Environment(loader=FileSystemLoader(template_dir))
 
     @timed_operation
-    def get_expenses(self, date_range: DateRange) -> Tuple[dict, float]:
+    def get_expenses(self, date_range: DateRange) -> Tuple[dict[str, float], float]:
         template = self._db_env.get_template('expenses.pgsql')
         query = text(template.render(date_range.model_dump()))
         response = self.db.execute(query)
         dollars, colones = response.fetchone()
         return {
-            'dollars': dollars,
-            'colones': colones
+            'USD': dollars,
+            'CRC': colones
         }

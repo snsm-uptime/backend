@@ -1,3 +1,4 @@
+-- TODO: Use jinja to dynamically add any currency based on ENUM
 WITH
     date_range AS (
         SELECT
@@ -5,35 +6,23 @@ WITH
             '{{ end_date }}'::DATE AS end_date
     )
 SELECT
-    to_char(
-        COALESCE(
-            (
-                SELECT
-                    SUM(value)
-                FROM
-                    transactions,
-                    date_range
-                WHERE
-                    currency = 'USD'
-                    AND date BETWEEN date_range.start_date AND date_range.end_date
-            ),
-            0
-        ),
-        'FM$999,999,999,990.00'
+    (
+        SELECT
+            SUM(value)
+        FROM
+            transactions,
+            date_range
+        WHERE
+            currency = 'USD'
+            AND date BETWEEN date_range.start_date AND date_range.end_date
     ) AS usd,
-    to_char(
-        COALESCE(
-            (
-                SELECT
-                    SUM(value)
-                FROM
-                    transactions,
-                    date_range
-                WHERE
-                    currency = 'CRC'
-                    AND date BETWEEN date_range.start_date AND date_range.end_date
-            ),
-            0
-        ),
-        'FM₡999,999,999,990.00'
+    (
+        SELECT
+            SUM(value)
+        FROM
+            transactions,
+            date_range
+        WHERE
+            currency = 'CRC'
+            AND date BETWEEN date_range.start_date AND date_range.end_date
     ) AS colones;
