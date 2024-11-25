@@ -1,21 +1,30 @@
 import logging
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 
 from ..dependencies import get_transaction_service
-from ..models.enums import Bank
+from ..models.enums import Bank, TimePeriod
 from ..models.transaction import TransactionTable
 from ..schemas import ApiResponse, CursorModel, DateRange
 from ..schemas.api_response import PaginatedResponse, SingleResponse
-from ..schemas.transaction import Transaction
+from ..schemas.transaction import Transaction, TransactionMetricsByPeriodResult
 from ..services import TransactionService
 from ..utils import create_json_response
 
 router = APIRouter(prefix="/transactions")
 
 logger = logging.getLogger(__name__)
+
+
+@router.get("/metrics", response_model=ApiResponse[SingleResponse[List[TransactionMetricsByPeriodResult]]])
+def get_expenses(
+    date_range: DateRange = Depends(),
+    period: TimePeriod = Query(TimePeriod.MONTHLY),
+    transaction_service: TransactionService = Depends(get_transaction_service),
+):
+    return transaction_service.get_metrics_by_period(date_range, period)
 
 
 @router.get("/expenses", response_model=ApiResponse[SingleResponse[dict]])

@@ -8,15 +8,16 @@ from sqlalchemy import and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ..utils.pagination import PaginationDetails, ThreadedPaginator
-
 from ..config import bank_config, config
 from ..models import (Bank, TransactionIDExistsError, TransactionTable,
                       generate_transaction_id)
+from ..models.enums import TimePeriod
 from ..repositories.transaction_repository import TransactionRepository
-from ..schemas import (ApiResponse, CursorModel, DateRange, Meta,
-                       SingleResponse, Transaction, TransactionCreate,
-                       TransactionUpdate, EmailMessageModel,  PaginatedResponse)
+from ..schemas import (ApiResponse, CursorModel, DateRange, EmailMessageModel,
+                       Meta, PaginatedResponse, SingleResponse, Transaction,
+                       TransactionCreate, TransactionUpdate)
+from ..schemas.transaction import TransactionMetricsByPeriodResult
+from ..utils.pagination import PaginationDetails, ThreadedPaginator
 from .email_service import EmailReaderService
 from .generic_service import GenericService
 
@@ -172,3 +173,16 @@ class TransactionService(
             whereclause = and_(
                 whereclause, date_range.contains(TransactionTable.date))
         return self.get_paginated(cursor, whereclause, order_by=TransactionTable.value)
+
+    def get_metrics_by_period(self, date_range: DateRange, period: TimePeriod) -> ApiResponse[SingleResponse[TransactionMetricsByPeriodResult]]:
+        data, elapsed_time = self.repository.get_metrics_by_period(
+            date_range, period)
+        return ApiResponse(
+            meta=Meta(
+                status=HTTPStatus.OK,
+                message=f'Got metrics grouped by {
+                    period.name} from {date_range}',
+                request_time=elapsed_time
+            ),
+            data=SingleResponse(item=data)
+        )

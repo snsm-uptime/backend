@@ -1,14 +1,14 @@
 import os
-from typing import Tuple
+from typing import List, Optional, Tuple
 
 from jinja2 import Environment, FileSystemLoader
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-
-from ..models import TimePeriod, TransactionTable, Currency
+from ..models import Currency, TimePeriod, TransactionTable
 from ..repositories.generic_repository import GenericRepository
 from ..schemas.api_response import DateRange
+from ..schemas.transaction import TransactionMetricsByPeriodResult
 from ..utils.decorators import timed_operation
 
 
@@ -30,12 +30,16 @@ class TransactionRepository(GenericRepository[TransactionTable]):
         return expenses
 
     @timed_operation
-    def get_expenses_by_period(self, date_range: DateRange, period: TimePeriod) -> Tuple[dict[str, float], float]:
-        template = self._db_env.get_template('period_expense_metrics.pgsql')
-        query = text(template.render(date_range.model_dump()))
-        response = self.db.execute(query)
-        dollars, colones = response.fetchone()
-        return {
-            'USD': dollars,
-            'CRC': colones
-        }
+    def get_metrics_by_period(
+        self, date_range: DateRange, period: TimePeriod
+    ) -> Tuple[List[TransactionMetricsByPeriodResult], float]:
+        query = text(self._db_env.get_template('period_expense_metrics.pgsql').render(
+            date_range.model_dump(), period=period.value
+        ))
+        row = self.db.execute(query).fetchall()
+        metrics: List[TransactionMetricsByPeriodResult] = []
+        if row:
+            for i in row:
+                metrics.append(
+                    TransactionMetricsByPeriodResult(**i._mapping))
+        return metrics

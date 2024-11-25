@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict
 
-from ..models.enums import ExpensePriority, ExpenseType
+from ..models.enums import Currency, ExpensePriority, ExpenseType
 from .api_response import PaginationMeta
 
 
@@ -40,3 +40,14 @@ class Transaction(TransactionBase):
 class TransactionsPageResponse(BaseModel):
     pagination_meta: PaginationMeta
     transactions: List[TransactionCreate]
+
+
+class TransactionMetricsByPeriodResult(BaseModel):
+    period_start: datetime
+    currency: Currency
+    total: float
+    transaction_count: int
+    avg_transaction: float
+    min_value: float
+    max_value: float
+    period_currency_pct: float
