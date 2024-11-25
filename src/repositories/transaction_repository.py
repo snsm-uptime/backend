@@ -22,11 +22,11 @@ class TransactionRepository(GenericRepository[TransactionTable]):
     def get_expenses(self, date_range: DateRange) -> Tuple[dict[str, float], float]:
         template = self._db_env.get_template('expenses.pgsql')
         query = text(template.render(
-            date_range.model_dump(), currencies=Currency))
+            date_range.model_dump(), currencies=Currency, decimals=5))
         self.logger.debug(query.text)
         result = self.db.execute(query).fetchone()
-        expenses = {currency.name: getattr(
-            result, currency.name.lower()) for currency in Currency}
+        expenses = {currency.name: round(float(getattr(
+            result, currency.name.lower())), 2) for currency in Currency}
         return expenses
 
     @timed_operation

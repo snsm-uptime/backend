@@ -5,17 +5,32 @@ WITH
             '2024-11-25'::DATE AS end_date
     )
 SELECT
-    SUM(value) FILTER (
-        WHERE
-            currency = 'CRC'
+    ROUND(
+        CAST(
+            SUM(value) FILTER (
+                WHERE
+                    currency = 'CRC'
+            ) AS NUMERIC
+        ),
+        2
     ) AS CRC,
-    SUM(value) FILTER (
-        WHERE
-            currency = 'MXP'
+    ROUND(
+        CAST(
+            SUM(value) FILTER (
+                WHERE
+                    currency = 'MXP'
+            ) AS NUMERIC
+        ),
+        2
     ) AS MXP,
-    SUM(value) FILTER (
-        WHERE
-            currency = 'USD'
+    ROUND(
+        CAST(
+            SUM(value) FILTER (
+                WHERE
+                    currency = 'USD'
+            ) AS NUMERIC
+        ),
+        2
     ) AS USD
 FROM
     transactions,

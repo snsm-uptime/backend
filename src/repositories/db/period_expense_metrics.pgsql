@@ -3,15 +3,17 @@ WITH
         SELECT
             '{{ start_date }}'::DATE AS start_date,
             '{{ end_date }}'::DATE AS end_date,
-            '{{ period }}'::TEXT AS period -- 'weekly', 'monthly', 'yearly'
+            '{{ period }}'::time_period AS period -- 'daily', 'weekly', 'monthly', 'yearly'
     ),
     transactions_filtered AS (
-        SELECTk t.*,
-        CASE
-            WHEN dr.period = 'monthly' THEN date_trunc('month', t.date)
-            WHEN dr.period = 'weekly' THEN date_trunc('week', t.date)
-            WHEN dr.period = 'yearly' THEN date_trunc('year', t.date)
-        END AS period_start
+        SELECT
+            t.*,
+            CASE
+                WHEN dr.period = 'daily' THEN date_trunc('day', t.date)
+                WHEN dr.period = 'weekly' THEN date_trunc('week', t.date)
+                WHEN dr.period = 'monthly' THEN date_trunc('month', t.date)
+                WHEN dr.period = 'yearly' THEN date_trunc('year', t.date)
+            END AS period_start
         FROM
             transactions t,
             date_range dr
@@ -44,113 +46,21 @@ WITH
                     ) AS numeric
                 ),
                 2
-            ) AS pct_total
+            ) AS period_currency_pct
         FROM
             currency_aggregates
     )
 SELECT
     period_start,
-    -- USD Metrics
-    COALESCE(
-        MAX(
-            CASE
-                WHEN currency = 'USD' THEN total_value
-            END
-        ),
-        0
-    ) AS total_usd,
-    COALESCE(
-        MAX(
-            CASE
-                WHEN currency = 'USD' THEN transaction_count
-            END
-        ),
-        0
-    ) AS transaction_count_usd,
-    COALESCE(
-        MAX(
-            CASE
-                WHEN currency = 'USD' THEN avg_transaction_value
-            END
-        ),
-        0
-    ) AS avg_transaction_usd,
-    COALESCE(
-        MAX(
-            CASE
-                WHEN currency = 'USD' THEN min_value
-            END
-        ),
-        0
-    ) AS min_value_usd,
-    COALESCE(
-        MAX(
-            CASE
-                WHEN currency = 'USD' THEN max_value
-            END
-        ),
-        0
-    ) AS max_value_usd,
-    COALESCE(
-        MAX(
-            CASE
-                WHEN currency = 'USD' THEN pct_total
-            END
-        ),
-        0
-    ) AS pct_total_usd,
-    -- CRC Metrics
-    COALESCE(
-        MAX(
-            CASE
-                WHEN currency = 'CRC' THEN total_value
-            END
-        ),
-        0
-    ) AS total_crc,
-    COALESCE(
-        MAX(
-            CASE
-                WHEN currency = 'CRC' THEN transaction_count
-            END
-        ),
-        0
-    ) AS transaction_count_crc,
-    COALESCE(
-        MAX(
-            CASE
-                WHEN currency = 'CRC' THEN avg_transaction_value
-            END
-        ),
-        0
-    ) AS avg_transaction_crc,
-    COALESCE(
-        MAX(
-            CASE
-                WHEN currency = 'CRC' THEN min_value
-            END
-        ),
-        0
-    ) AS min_value_crc,
-    COALESCE(
-        MAX(
-            CASE
-                WHEN currency = 'CRC' THEN max_value
-            END
-        ),
-        0
-    ) AS max_value_crc,
-    COALESCE(
-        MAX(
-            CASE
-                WHEN currency = 'CRC' THEN pct_total
-            END
-        ),
-        0
-    ) AS pct_total_crc
+    currency,
+    COALESCE(total_value, 0) AS total,
+    COALESCE(transaction_count, 0) AS transaction_count,
+    COALESCE(avg_transaction_value, 0) AS avg_transaction,
+    COALESCE(min_value, 0) AS min_value,
+    COALESCE(max_value, 0) AS max_value,
+    COALESCE(period_currency_pct, 0) AS period_currency_pct
 FROM
     percentage_contributions
-GROUP BY
-    period_start
 ORDER BY
-    period_start;
+    period_start,
+    currency;
