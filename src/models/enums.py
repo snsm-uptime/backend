@@ -37,3 +37,15 @@ class ExpenseType(Enum):
     SELF_CARE = auto()
     PET = auto()
     GIFT = auto()
+
+
+class Currency(Enum):
+    CRC = "CRC"
+    USD = "USD"
+
+
+class TimePeriod(Enum):
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+    YEARLY = "yearly"
