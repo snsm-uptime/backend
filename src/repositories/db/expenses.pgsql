@@ -1,4 +1,3 @@
--- TODO: Use jinja to dynamically add any currency based on ENUM
 WITH
     date_range AS (
         SELECT
@@ -6,23 +5,14 @@ WITH
             '{{ end_date }}'::DATE AS end_date
     )
 SELECT
-    (
-        SELECT
-            SUM(value)
-        FROM
-            transactions,
-            date_range
+    {% for currency in currencies %}
+    SUM(value) FILTER (
         WHERE
-            currency = 'USD'
-            AND date BETWEEN date_range.start_date AND date_range.end_date
-    ) AS usd,
-    (
-        SELECT
-            SUM(value)
-        FROM
-            transactions,
-            date_range
-        WHERE
-            currency = 'CRC'
-            AND date BETWEEN date_range.start_date AND date_range.end_date
-    ) AS colones;
+            currency = '{{ currency.name }}'
+    ) AS {{ currency.name }}{% if not loop.last %},{% endif %}
+    {% endfor %}
+FROM
+    transactions,
+    date_range
+WHERE
+    date BETWEEN date_range.start_date AND date_range.end_date;

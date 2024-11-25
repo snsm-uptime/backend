@@ -1,3 +1,4 @@
+from logging import getLogger
 from typing import Callable, Generic, List, Optional, Tuple, Type, Union
 
 from fastapi import Query
@@ -13,6 +14,7 @@ class GenericRepository(Generic[ModelType]):
     def __init__(self, db: Session, model: Type[ModelType]):
         self.db = db
         self.model = model
+        self.logger = getLogger(self.__class__.__name__)
 
     @timed_operation
     def create(self, obj_in: ModelType) -> Tuple[ModelType, float]:
