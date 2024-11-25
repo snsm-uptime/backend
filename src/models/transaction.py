@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, DateTime, Enum, Float, String, Text
 
 from ._base import Base
-from ..models.enums import ExpensePriority, ExpenseType
+from ..models.enums import Currency, ExpensePriority, ExpenseType
 
 
 def generate_transaction_id(bank: str, value: float, date: datetime) -> str:
@@ -21,7 +21,7 @@ class TransactionTable(Base):
     id = Column(String, primary_key=True, index=True)
     date = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     value = Column(Float, nullable=False)
-    currency = Column(String, nullable=False)
+    currency = Column(Enum(Currency), nullable=False)
     business = Column(String, nullable=False)
     business_type = Column(String, nullable=True)
     bank_name = Column(String, nullable=False)

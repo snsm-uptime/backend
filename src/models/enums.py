@@ -40,6 +40,7 @@ class ExpenseType(Enum):
 
 
 class Currency(Enum):
+    MXP = "MXP"
     CRC = "CRC"
     USD = "USD"
 
