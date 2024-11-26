@@ -44,7 +44,6 @@ class TransactionsPageResponse(BaseModel):
 
 class TransactionMetricsByPeriodResult(BaseModel):
     period_start: datetime
-    currency: Currency
     total: float
     transaction_count: int
     avg_transaction: float

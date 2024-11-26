@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 
 from ..dependencies import get_transaction_service
-from ..models.enums import Bank, TimePeriod
+from ..models.enums import Bank, Currency, TimePeriod
 from ..models.transaction import TransactionTable
 from ..schemas import ApiResponse, CursorModel, DateRange
 from ..schemas.api_response import PaginatedResponse, SingleResponse
@@ -22,9 +22,10 @@ logger = logging.getLogger(__name__)
 def get_expenses(
     date_range: DateRange = Depends(),
     period: TimePeriod = Query(TimePeriod.MONTHLY),
+    currency: Currency = Query(Currency.CRC),
     transaction_service: TransactionService = Depends(get_transaction_service),
 ):
-    return transaction_service.get_metrics_by_period(date_range, period)
+    return transaction_service.get_metrics_by_period(date_range, period, currency)
 
 
 @router.get("/expenses", response_model=ApiResponse[SingleResponse[dict]])

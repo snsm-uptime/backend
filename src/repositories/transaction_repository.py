@@ -31,10 +31,10 @@ class TransactionRepository(GenericRepository[TransactionTable]):
 
     @timed_operation
     def get_metrics_by_period(
-        self, date_range: DateRange, period: TimePeriod
+        self, date_range: DateRange, period: TimePeriod, currency: Currency
     ) -> Tuple[List[TransactionMetricsByPeriodResult], float]:
         query = text(self._db_env.get_template('period_expense_metrics.pgsql').render(
-            date_range.model_dump(), period=period.value
+            date_range.model_dump(), period=period.value, currency=currency.value
         ))
         row = self.db.execute(query).fetchall()
         metrics: List[TransactionMetricsByPeriodResult] = []

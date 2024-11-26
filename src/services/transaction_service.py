@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from ..config import bank_config, config
 from ..models import (Bank, TransactionIDExistsError, TransactionTable,
                       generate_transaction_id)
-from ..models.enums import TimePeriod
+from ..models.enums import Currency, TimePeriod
 from ..repositories.transaction_repository import TransactionRepository
 from ..schemas import (ApiResponse, CursorModel, DateRange, EmailMessageModel,
                        Meta, PaginatedResponse, SingleResponse, Transaction,
@@ -174,9 +174,9 @@ class TransactionService(
                 whereclause, date_range.contains(TransactionTable.date))
         return self.get_paginated(cursor, whereclause, order_by=TransactionTable.value)
 
-    def get_metrics_by_period(self, date_range: DateRange, period: TimePeriod) -> ApiResponse[SingleResponse[TransactionMetricsByPeriodResult]]:
+    def get_metrics_by_period(self, date_range: DateRange, period: TimePeriod, currency: Currency) -> ApiResponse[SingleResponse[TransactionMetricsByPeriodResult]]:
         data, elapsed_time = self.repository.get_metrics_by_period(
-            date_range, period)
+            date_range, period, currency)
         return ApiResponse(
             meta=Meta(
                 status=HTTPStatus.OK,
