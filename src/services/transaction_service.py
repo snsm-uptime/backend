@@ -1,3 +1,4 @@
+from psycopg2.errors import DivisionByZero
 from curses import meta
 from functools import partial
 from http import HTTPStatus
@@ -175,14 +176,25 @@ class TransactionService(
         return self.get_paginated(cursor, whereclause, order_by=TransactionTable.value)
 
     def get_metrics_by_period(self, date_range: DateRange, period: TimePeriod, currency: Currency) -> ApiResponse[SingleResponse[TransactionMetricsByPeriodResult]]:
-        data, elapsed_time = self.repository.get_metrics_by_period(
-            date_range, period, currency)
-        return ApiResponse(
-            meta=Meta(
+        elapsed_time = 0
+        data = None
+        meta = None
+        try:
+            response, elapsed_time = self.repository.get_metrics_by_period(
+                date_range, period, currency)
+            meta = Meta(
                 status=HTTPStatus.OK,
                 message=f'Got metrics grouped by {
                     period.name} from {date_range}',
                 request_time=elapsed_time
-            ),
-            data=SingleResponse(item=data)
-        )
+            )
+            data = SingleResponse(item=response)
+        except DivisionByZero:
+            meta = Meta(
+                status=HTTPStatus.NOT_ACCEPTABLE,
+                message=f"Can't get metrics because there were no transactions in {
+                    currency.name} from {date_range}",
+                elapsed_time=0
+            )
+
+        return ApiResponse(meta=meta, data=data)

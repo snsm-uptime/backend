@@ -1,3 +1,4 @@
+from collections import defaultdict
 import os
 from typing import List, Optional, Tuple
 
@@ -25,8 +26,10 @@ class TransactionRepository(GenericRepository[TransactionTable]):
             date_range.model_dump(), currencies=Currency, decimals=5))
         self.logger.debug(query.text)
         result = self.db.execute(query).fetchone()
-        expenses = {currency.name: round(float(getattr(
-            result, currency.name.lower())), 2) for currency in Currency}
+        expenses = defaultdict()
+        for currency in Currency:
+            total: float = getattr(result, currency.name.lower(), 0.0)
+            expenses[currency.name] = total
         return expenses
 
     @timed_operation
