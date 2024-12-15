@@ -29,6 +29,9 @@ def upgrade():
         VALUES 
             ('USD', 'US Dollar', '$', 'United States'),
             ('CRC', 'Costa Rican Colón', '₡', 'Costa Rica')
+            ('ARS', 'Peso Argentino', '$', 'Argentina')
+            ('COL', 'Peso Colombiano', '$', 'Colombia')
+            ('MXN', 'Peso Mexicano', '$', 'Mexico')
     """)
 
     # Step 3: Populate the currency_id column based on the existing currency enum
@@ -45,7 +48,7 @@ def upgrade():
     op.execute("""
         UPDATE transactions
         SET currency_id = (
-            SELECT id FROM currencies WHERE code = 'USD'
+            SELECT id FROM currencies WHERE code = 'CRC'
         )
         WHERE currency_id IS NULL
     """)
@@ -67,16 +70,32 @@ def upgrade():
 
 
 def downgrade():
-    # Step 1: Recreate the old currency enum column
-    op.add_column('transactions', sa.Column('currency', sa.Enum(
-        'USD', 'CRC', name='currency'), nullable=False))
-
-    # Step 2: Remove the foreign key constraint
+    # Step 1: Drop the foreign key constraint
     op.drop_constraint('fk_transactions_currency_id',
                        'transactions', type_='foreignkey')
 
-    # Step 3: Drop the currency_id column
-    op.drop_column('transactions', 'currency')
+    # Step 2: Add back the old currency enum column
+    op.add_column(
+        'transactions',
+        sa.Column('currency', sa.Enum(
+            'USD', 'CRC', 'ARS', 'COL', 'MXN', name='currency'), nullable=False)
+    )
 
-    # Step 4: Clear the currencies table
-    op.execute("DELETE FROM currencies WHERE code IN ('USD', 'CRC')")
+    # Step 3: Populate the old currency column based on currency_id
+    op.execute("""
+        UPDATE transactions
+        SET currency = (
+            SELECT code
+            FROM currencies
+            WHERE currencies.id = transactions.currency_id
+        )
+    """)
+
+    # Step 4: Drop the currency_id column
+    op.drop_column('transactions', 'currency_id')
+
+    # Step 5: Remove the inserted rows from the currencies table
+    op.execute("""
+        DELETE FROM currencies
+        WHERE code IN ('USD', 'CRC', 'ARS', 'COL', 'MXN')
+    """)
