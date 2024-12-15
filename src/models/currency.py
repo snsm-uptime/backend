@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, Integer, TIMESTAMP, text
 from sqlalchemy.orm import declarative_base
 
-Base = declarative_base()
+from ._base import Base
 
 
 class CurrencyTable(Base):

@@ -39,12 +39,6 @@ class ExpenseType(Enum):
     GIFT = auto()
 
 
-class Currency(Enum):
-    MXP = "MXP"
-    CRC = "CRC"
-    USD = "USD"
-
-
 class TimePeriod(Enum):
     DAILY = "daily"
     WEEKLY = "weekly"
