@@ -1,14 +1,16 @@
-from collections import defaultdict
 import os
+from collections import defaultdict
 from typing import List, Optional, Tuple
 
 from jinja2 import Environment, FileSystemLoader
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from ..models import Currency, TimePeriod, TransactionTable
+from ..dependencies.currency_enum import cached_currency_enum
+from ..models import TimePeriod, TransactionTable
 from ..repositories.generic_repository import GenericRepository
 from ..schemas.api_response import DateRange
+from ..schemas.currency import Currency
 from ..schemas.transaction import TransactionMetricsByPeriodResult
 from ..utils.decorators import timed_operation
 
@@ -22,12 +24,13 @@ class TransactionRepository(GenericRepository[TransactionTable]):
     @timed_operation
     def get_expenses(self, date_range: DateRange) -> Tuple[dict[str, float], float]:
         template = self._db_env.get_template('expenses.pgsql')
+        currency_enum = cached_currency_enum()
         query = text(template.render(
-            date_range.model_dump(), currencies=Currency, decimals=5))
+            date_range.model_dump(), currencies=currency_enum, decimals=5))
         self.logger.debug(query.text)
         result = self.db.execute(query).fetchone()
         expenses = defaultdict()
-        for currency in Currency:
+        for currency in currency_enum:
             total: float = getattr(result, currency.name.lower(), 0.0)
             expenses[currency.name] = total
         return expenses

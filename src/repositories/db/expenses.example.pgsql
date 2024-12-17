@@ -7,33 +7,34 @@ WITH
 SELECT
     ROUND(
         CAST(
-            SUM(value) FILTER (
+            SUM(t.value) FILTER (
                 WHERE
-                    currency = 'CRC'
+                    c.code = 'CRC'
             ) AS NUMERIC
         ),
         2
     ) AS CRC,
     ROUND(
         CAST(
-            SUM(value) FILTER (
+            SUM(t.value) FILTER (
                 WHERE
-                    currency = 'MXP'
+                    c.code = 'MXP'
             ) AS NUMERIC
         ),
         2
     ) AS MXP,
     ROUND(
         CAST(
-            SUM(value) FILTER (
+            SUM(t.value) FILTER (
                 WHERE
-                    currency = 'USD'
+                    c.code = 'USD'
             ) AS NUMERIC
         ),
         2
     ) AS USD
 FROM
-    transactions,
+    transactions t
+    INNER JOIN currencies c ON t.currency_id = c.id,
     date_range
 WHERE
     date BETWEEN date_range.start_date AND date_range.end_date;

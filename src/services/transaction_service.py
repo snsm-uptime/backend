@@ -1,10 +1,10 @@
-from psycopg2.errors import DivisionByZero
 from curses import meta
 from functools import partial
 from http import HTTPStatus
 from logging import getLogger
 from typing import List, Optional, Tuple, override
 
+from psycopg2.errors import DivisionByZero
 from sqlalchemy import and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -12,11 +12,12 @@ from sqlalchemy.orm import Session
 from ..config import bank_config, config
 from ..models import (Bank, TransactionIDExistsError, TransactionTable,
                       generate_transaction_id)
-from ..models.enums import Currency, TimePeriod
+from ..models.enums import TimePeriod
 from ..repositories.transaction_repository import TransactionRepository
 from ..schemas import (ApiResponse, CursorModel, DateRange, EmailMessageModel,
                        Meta, PaginatedResponse, SingleResponse, Transaction,
                        TransactionCreate, TransactionUpdate)
+from ..schemas.currency import Currency
 from ..schemas.transaction import TransactionMetricsByPeriodResult
 from ..utils.pagination import PaginationDetails, ThreadedPaginator
 from .email_service import EmailReaderService

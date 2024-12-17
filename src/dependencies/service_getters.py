@@ -3,8 +3,8 @@ from typing import Optional
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from .database import get_db
-from .services import TransactionService, EmailReaderService
+from ..database import get_db
+from ..services import EmailReaderService, TransactionService
 
 transaction_service_instance: Optional[TransactionService] = None
 email_reader_service_instance: Optional[EmailReaderService] = None

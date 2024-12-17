@@ -6,13 +6,15 @@ WITH
     )
 SELECT
     {% for currency in currencies %}
-    SUM(value) FILTER (
+    SUM(t.value) FILTER (
         WHERE
-            currency = '{{ currency.name }}'
+            c.code = '{{ currency.name }}'
     ) AS {{ currency.name }}{% if not loop.last %},{% endif %}
     {% endfor %}
 FROM
-    transactions,
+    transactions t
+    INNER JOIN currencies c
+    ON t.currency_id = c.id,
     date_range
 WHERE
     date BETWEEN date_range.start_date AND date_range.end_date;

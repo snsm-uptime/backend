@@ -1,14 +1,17 @@
 import logging
+from http import HTTPStatus
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 
 from ..dependencies import get_transaction_service
-from ..models.enums import Bank, Currency, TimePeriod
+from ..dependencies.currency_enum import cached_currency_enum
+from ..models.enums import Bank, TimePeriod
 from ..models.transaction import TransactionTable
 from ..schemas import ApiResponse, CursorModel, DateRange
-from ..schemas.api_response import PaginatedResponse, SingleResponse
+from ..schemas.api_response import Meta, PaginatedResponse, SingleResponse
+from ..schemas.currency import Currency
 from ..schemas.transaction import Transaction, TransactionMetricsByPeriodResult
 from ..services import TransactionService
 from ..utils import create_json_response
@@ -22,10 +25,14 @@ logger = logging.getLogger(__name__)
 def get_expenses(
     date_range: DateRange = Depends(),
     period: TimePeriod = Query(TimePeriod.MONTHLY),
-    currency: Currency = Query(Currency.CRC),
+    currency: str = Query('CRC'),
     transaction_service: TransactionService = Depends(get_transaction_service),
 ):
-    return transaction_service.get_metrics_by_period(date_range, period, currency)
+    enm = cached_currency_enum()
+    try:
+        return transaction_service.get_metrics_by_period(date_range, period, enm[currency])
+    except KeyError:
+        return ApiResponse(meta=Meta(status=HTTPStatus.NOT_FOUND, message=f'{currency.upper()} has no records in the system', request_time=0.0))
 
 
 @router.get("/expenses", response_model=ApiResponse[SingleResponse[dict]])
