@@ -8,7 +8,7 @@ from requests import RequestException
 
 from .config.app_settings import config
 from .models import PydanticValidationError
-from .routers.transactions import router as TransactionRouter
+from .routers import TransactionRouter, CurrencyRouter
 from .utils.logging import configure_root_logger
 from .utils.response import create_exception_response
 from fastapi.middleware.cors import CORSMiddleware
@@ -57,3 +57,4 @@ async def requests_exception_handler(request: Request, exc: RequestException):
 
 
 app.include_router(TransactionRouter, prefix="/v1")
+app.include_router(CurrencyRouter, prefix="/v1")

@@ -36,9 +36,10 @@ class GenericService(Generic[ModelType, CreateSchemaType, UpdateSchemaType, Retu
         item = self.return_schema.model_validate(db_obj) if db_obj else None
         return ApiResponse(meta=meta, data=SingleResponse(item=item))
 
-    def get_all(self, ) -> ApiResponse[SingleResponse[List[ReturnSchemaType]]]:
+    def get_all(self) -> ApiResponse[SingleResponse[List[ReturnSchemaType]]]:
         data, elapsed_time = self.repository.get_all()
-        return ApiResponse(meta=Meta(status=HTTPStatus.OK, request_time=elapsed_time), data=data)
+        items = [self.return_schema.model_validate(obj) for obj in data]
+        return ApiResponse(meta=Meta(status=HTTPStatus.OK, request_time=elapsed_time), data=SingleResponse(item=items))
 
     def get_paginated(self, cursor: CursorModel, filter: Optional[ColumnElement] = None,
                       order_by: Optional[Union[ColumnElement,

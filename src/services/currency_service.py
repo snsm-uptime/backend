@@ -5,6 +5,7 @@ import requests
 from sqlalchemy.orm import Session
 
 from ..models.currency import CurrencyTable
+from ..repositories.currency_repository import CurrencyRepository
 from ..repositories.generic_repository import GenericRepository
 from ..schemas.api_response import ApiResponse, Meta, SingleResponse
 from ..schemas.currency import Currency, CurrencyCreate, CurrencyUpdate
@@ -14,7 +15,15 @@ from ..utils.decorators import timed_operation
 
 class CurrencyService(GenericService[CurrencyTable, CurrencyCreate, CurrencyUpdate, Currency]):
     def __init__(self, db: Session):
-        self.repository = GenericRepository[CurrencyTable](db)
+        self.repository: CurrencyRepository = CurrencyRepository(db)
+
+        super().__init__(
+            CurrencyTable,
+            CurrencyCreate,
+            CurrencyUpdate,
+            Currency,
+            self.repository
+        )
 
     @timed_operation
     def get_currency_metadata(self, code: str) -> Tuple[CurrencyCreate, float]:
@@ -40,6 +49,8 @@ class CurrencyService(GenericService[CurrencyTable, CurrencyCreate, CurrencyUpda
             new_entry, time_get_meta = self.get_currency_metadata(code)
             response = self.create(new_entry)
             response.meta.request_time += time_get_meta + time_get_all
+            response.meta.message = f"Created a new currency {
+                response.data.item.name}"
             return response
         else:
             return ApiResponse(meta=Meta(message="That code is already assigned to a currency in the database", request_time=time_get_all, status=HTTPStatus.FOUND),

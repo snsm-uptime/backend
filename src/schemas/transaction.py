@@ -4,7 +4,6 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 
 from ..models.enums import ExpensePriority, ExpenseType
-from ..schemas.currency import Currency
 from .api_response import PaginationMeta
 
 
@@ -12,7 +11,7 @@ class TransactionBase(BaseModel):
     bank_name: str
     bank_email: str
     business: str
-    currency: Currency
+    currency: str
     date: datetime
     value: float
 

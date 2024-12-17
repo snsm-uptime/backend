@@ -2,10 +2,10 @@ from curses import meta
 from functools import partial
 from http import HTTPStatus
 from logging import getLogger
-from typing import List, Optional, Tuple, override
+from typing import List, Optional, Tuple, Union, override
 
 from psycopg2.errors import DivisionByZero
-from sqlalchemy import and_
+from sqlalchemy import ColumnElement, and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -17,6 +17,7 @@ from ..repositories.transaction_repository import TransactionRepository
 from ..schemas import (ApiResponse, CursorModel, DateRange, EmailMessageModel,
                        Meta, PaginatedResponse, SingleResponse, Transaction,
                        TransactionCreate, TransactionUpdate)
+from ..schemas.api_response import PaginationMeta
 from ..schemas.currency import Currency
 from ..schemas.transaction import TransactionMetricsByPeriodResult
 from ..utils.pagination import PaginationDetails, ThreadedPaginator
@@ -82,15 +83,18 @@ class TransactionService(
         except IntegrityError:
             raise TransactionIDExistsError(transaction_id)
 
-        transaction = self.return_schema.model_validate(db_obj)
+        # Map the currency relationship to the code
+        transaction_data = self.return_schema.model_validate(
+            {**db_obj.__dict__, "currency": db_obj.currency.code}
+        )
 
         return ApiResponse(
             meta=Meta(
                 status=HTTPStatus.CREATED,
                 request_time=elapsed_time,
-                message=f"Transaction created successfully {transaction.id}",
+                message=f"Transaction created successfully {transaction_id}",
             ),
-            data=SingleResponse(item=transaction),
+            data=SingleResponse(item=transaction_data),
         )
 
     def pull_transactions_from_email(
@@ -199,3 +203,42 @@ class TransactionService(
             )
 
         return ApiResponse(meta=meta, data=data)
+
+    def get_paginated(self, cursor: CursorModel, filter: Optional[ColumnElement] = None,
+                      order_by: Optional[Union[ColumnElement,
+                                               list[ColumnElement]]] = None
+                      ) -> ApiResponse[PaginatedResponse[Transaction]]:
+        current_page = cursor.page
+        page_size = cursor.page_size
+
+        total_items, count_elapsed_time = self.repository.count(filter)
+        offset = (current_page - 1) * page_size
+        db_objs, paginated_elapsed_time = self.repository.get_paginated(
+            offset, page_size, filter, order_by)
+
+        total_pages = (total_items + page_size - 1) // page_size
+        request_time = count_elapsed_time + paginated_elapsed_time
+
+        next_cursor = CursorModel(
+            page=current_page + 1, page_size=page_size).encode() if current_page < total_pages else None
+        prev_cursor = CursorModel(
+            page=current_page - 1, page_size=page_size).encode() if current_page > 1 else None
+
+        # Map the currency relationship to the code
+        items = [self.return_schema.model_validate(
+            {**obj.__dict__, "currency": obj.currency.code}) for obj in db_objs]
+
+        meta = Meta(status=HTTPStatus.OK, request_time=request_time,
+                    message="Transactions retrieved successfully")
+        pagination = PaginationMeta(
+            total_items=total_items,
+            total_pages=total_pages,
+            page_size=page_size,
+            page=current_page,
+            next_cursor=next_cursor,
+            prev_cursor=prev_cursor
+        )
+
+        response = ApiResponse(meta=meta, data=PaginatedResponse(
+            pagination=pagination, items=items))
+        return response
