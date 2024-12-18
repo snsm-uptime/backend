@@ -1,10 +1,7 @@
-from datetime import datetime
-from typing import List, Optional
+from datetime import datetime, timezone
+from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
-
-from ..models.enums import ExpensePriority, ExpenseType
-from .api_response import PaginationMeta
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CurrencyBase(BaseModel):
@@ -12,7 +9,8 @@ class CurrencyBase(BaseModel):
     name: Optional[str]
     symbol: Optional[str]
     region: Optional[str]
-    created_at: datetime
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc))
 
 
 class CurrencyCreate(CurrencyBase):

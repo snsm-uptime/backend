@@ -31,9 +31,10 @@ def get_email_reader_service() -> EmailReaderService:
 
 def get_transaction_service(
         db: Session = Depends(get_db),
-        email_service: EmailReaderService = Depends(get_email_reader_service)
+        email_service: EmailReaderService = Depends(get_email_reader_service),
+        currency_service: CurrencyService = Depends(get_currency_service)
 ) -> TransactionService:
     global transaction_service_instance
     if not transaction_service_instance:
-        return TransactionService(db, email_service)
+        return TransactionService(db, email_service, currency_service)
     return transaction_service_instance

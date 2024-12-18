@@ -29,9 +29,6 @@ def upgrade():
         VALUES 
             ('USD', 'US Dollar', '$', 'United States'),
             ('CRC', 'Costa Rican Colón', '₡', 'Costa Rica')
-            ('ARS', 'Peso Argentino', '$', 'Argentina')
-            ('COL', 'Peso Colombiano', '$', 'Colombia')
-            ('MXN', 'Peso Mexicano', '$', 'Mexico')
     """)
 
     # Step 3: Populate the currency_id column based on the existing currency enum

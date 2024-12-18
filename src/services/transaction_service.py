@@ -9,6 +9,8 @@ from sqlalchemy import ColumnElement, and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from ..services.currency_service import CurrencyService
+
 from ..config import bank_config, config
 from ..models import (Bank, TransactionIDExistsError, TransactionTable,
                       generate_transaction_id)
@@ -48,9 +50,10 @@ class TransactionService(
     GenericService[TransactionTable, TransactionCreate,
                    TransactionUpdate, Transaction]
 ):
-    def __init__(self, db: Session, email_service: EmailReaderService):
+    def __init__(self, db: Session, email_service: EmailReaderService, currency_service: CurrencyService):
         self.repository: TransactionRepository = TransactionRepository(db)
         self.email_service = email_service
+        self.currency_service = currency_service
 
         super().__init__(
             TransactionTable,
@@ -75,8 +78,20 @@ class TransactionService(
         transaction_id = generate_transaction_id(
             obj_in.bank_email, obj_in.value, obj_in.date
         )
+        currency_response = self.currency_service.get_by_code(obj_in.currency)
+        currency: Currency
+
+        if currency_response.meta.status == HTTPStatus.OK:
+            currency = currency_response.data.item
+        else:
+            new_currency_response = self.currency_service.create_from_code(
+                obj_in.currency)
+            currency = new_currency_response.data.item
+
         obj_in_data = obj_in.model_dump()
         obj_in_data["id"] = transaction_id
+        obj_in_data['currency_id'] = currency.id
+        del obj_in_data['currency']
         db_obj = self.repository.model(**obj_in_data)
         try:
             db_obj, elapsed_time = self.repository.create(db_obj)
@@ -156,6 +171,8 @@ class TransactionService(
                         except TransactionIDExistsError as e:
                             existing_entries.append(e.transaction_id)
                             response_messages.append(*e.args)
+                        except Exception as e:
+                            self.logger.exception(e)
 
         if empty_responses == len(bank_config.keys()):
             return ApiResponse(meta=Meta(

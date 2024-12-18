@@ -4,6 +4,8 @@ from typing import Optional, Tuple, override
 import requests
 from sqlalchemy.orm import Session
 
+from ..utils.dynamic_enum import remap_currency_codes
+
 from ..models.currency import CurrencyTable
 from ..repositories.currency_repository import CurrencyRepository
 from ..repositories.generic_repository import GenericRepository
@@ -27,31 +29,40 @@ class CurrencyService(GenericService[CurrencyTable, CurrencyCreate, CurrencyUpda
 
     @timed_operation
     def get_currency_metadata(self, code: str) -> Tuple[CurrencyCreate, float]:
+        code = remap_currency_codes(code)
         response = requests.get(
             f'https://restcountries.com/v3.1/currency/{code}')
         response.raise_for_status()
-        data = response.json()
+        data = response.json()[0]
         return CurrencyCreate(
-            code,
+            code=code,
             name=data['currencies'][code]['name'],
             symbol=data['currencies'][code]['symbol'],
-            region=data['region']
+            region=data['name']['common']
         )
 
     def create_from_code(self, code: str) -> ApiResponse[SingleResponse[Currency]]:
-        db_currencies, time_get_all = self.repository.get_all()
-        existing_currency: Optional[Currency] = None
-        for i in db_currencies:
-            if i.code == code:
-                existing_currency = i
+        code = remap_currency_codes(code)
+        new_entry, time_get_meta = self.get_currency_metadata(code)
+        response = self.create(new_entry)
+        response.meta.request_time += time_get_meta
+        response.meta.message = f"Created a new currency {
+            response.data.item.name}"
+        return response
 
-        if not existing_currency:
-            new_entry, time_get_meta = self.get_currency_metadata(code)
-            response = self.create(new_entry)
-            response.meta.request_time += time_get_meta + time_get_all
-            response.meta.message = f"Created a new currency {
-                response.data.item.name}"
-            return response
+    def get_by_code(self, code: str) -> ApiResponse[SingleResponse[Currency]]:
+        code = remap_currency_codes(code)
+        result, elapsed_time = self.repository.filter_by_code(code)
+        if result:
+            return ApiResponse(
+                meta=Meta(
+                    message=f'Found data from {result.name}',
+                    request_time=elapsed_time, status=HTTPStatus.OK),
+                data=SingleResponse(item=result)
+            )
         else:
-            return ApiResponse(meta=Meta(message="That code is already assigned to a currency in the database", request_time=time_get_all, status=HTTPStatus.FOUND),
-                               data=SingleResponse(item=existing_currency))
+            return ApiResponse(
+                meta=Meta(
+                    message=f'That currency isn\'t registered',
+                    request_time=elapsed_time, status=HTTPStatus.NOT_FOUND),
+            )
