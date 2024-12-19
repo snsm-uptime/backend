@@ -9,6 +9,8 @@ from sqlalchemy import ColumnElement, and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from ..dependencies.currency_enum import cached_currency_enum
+
 from ..services.currency_service import CurrencyService
 
 from ..config import bank_config, config
@@ -65,11 +67,16 @@ class TransactionService(
 
     def get_expenses(self, date_range: DateRange) -> ApiResponse[SingleResponse[dict]]:
         data, exec_time = self.repository.get_expenses(date_range)
-        return ApiResponse(
-            meta=Meta(status=HTTPStatus.OK,
-                      message=f"Got expenses from {date_range} in currency: USD, CRC", request_time=exec_time),
-            data=SingleResponse(item=data)
-        )
+        currency_names = ", ".join(data.keys())
+        suffix = f"from {date_range} in {currency_names}"
+        if not all(value is None for value in data.values()):
+            return ApiResponse(
+                meta=Meta(status=HTTPStatus.OK,
+                          message=f"Got expenses {suffix}", request_time=exec_time),
+                data=SingleResponse(item=data)
+            )
+        else:
+            return ApiResponse(meta=Meta(status=HTTPStatus.NO_CONTENT, message=f"No expenses {suffix}", request_time=exec_time))
 
     @override
     def create(

@@ -22,17 +22,16 @@ class TransactionRepository(GenericRepository[TransactionTable]):
         self._db_env = Environment(loader=FileSystemLoader(template_dir))
 
     @timed_operation
-    def get_expenses(self, date_range: DateRange) -> Tuple[dict[str, float], float]:
+    def get_expenses(self, date_range: DateRange) -> Tuple[Optional[dict[str, Optional[float]]], float]:
         template = self._db_env.get_template('expenses.pgsql')
         currency_enum = cached_currency_enum()
         query = text(template.render(
             date_range.model_dump(), currencies=currency_enum, decimals=5))
         self.logger.debug(query.text)
-        result = self.db.execute(query).fetchone()
-        expenses = defaultdict()
-        for currency in currency_enum:
-            total: float = getattr(result, currency.name.lower(), 0.0)
-            expenses[currency.name] = total
+        result = self.db.execute(query).fetchall()
+        expenses = {
+            currency[1]: currency[0] for currency in self.db.execute(query).fetchall()
+        }
         return expenses
 
     @timed_operation
