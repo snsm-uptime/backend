@@ -4,7 +4,7 @@ WITH
         SELECT
             '2024-01-01'::DATE AS start_date,
             '2024-11-25'::DATE AS end_date,
-            'daily'::time_period AS period,
+            'weekly'::time_period AS period,
             'USD'::TEXT AS filter_by -- Filter by currency code as text
     ),
 

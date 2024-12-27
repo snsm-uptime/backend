@@ -76,7 +76,7 @@ class TransactionService(
                 data=SingleResponse(item=data)
             )
         else:
-            return ApiResponse(meta=Meta(status=HTTPStatus.NO_CONTENT, message=f"No expenses {suffix}", request_time=exec_time))
+            return ApiResponse(meta=Meta(status=HTTPStatus.NO_CONTENT, message=f"No expenses {suffix} any currency", request_time=exec_time))
 
     @override
     def create(
